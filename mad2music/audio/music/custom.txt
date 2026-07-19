@@ -1,0 +1,2 @@
+# Add YouTube URLs for the 'custom' category here, one per line.
+# Lines starting with '#' are ignored.
