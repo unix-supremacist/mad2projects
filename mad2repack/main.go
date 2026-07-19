@@ -254,6 +254,16 @@ func main() {
 			os.Exit(1)
 		}
 
+	case "objects-dump":
+		if len(args) < 2 {
+			fmt.Fprintf(os.Stderr, "Usage: mad2repack objects-dump <level.bld> <output.json>\n")
+			os.Exit(1)
+		}
+		if err := cmdObjectsDump(args[0], args[1]); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+
 	case "verify-binary":
 		if len(args) < 2 {
 			fmt.Fprintf(os.Stderr, "Usage: mad2repack verify-binary <original.pak/iga> <repacked.pak/iga>\n")
@@ -288,6 +298,7 @@ func printUsage() {
 	fmt.Fprintf(os.Stderr, "  pak-compile <js> <out.pak> Compile new PAK file from JSON metadata\n")
 	fmt.Fprintf(os.Stderr, "  level-dump <bld> <out.json> Dump level float32 coordinates to JSON\n")
 	fmt.Fprintf(os.Stderr, "  level-compile <js> <orig.bld> <out.bld> Compile level coordinates from JSON metadata\n")
+	fmt.Fprintf(os.Stderr, "  objects-dump <bld> <out.json> Dump the real object graph (class + known fields), not a byte-pattern guess\n")
 }
 
 // cmdVerify extracts all files from an archive, repacks them, and verifies

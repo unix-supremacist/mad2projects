@@ -1,0 +1,3107 @@
+{
+  "Gap::TFBActorInfo::ActorInfo": {
+    "activeSet": {
+      "accessors": [
+        "get:getActiveSetToVariant__Q33Gap12TFBActorInfo9ActorInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x80464014"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 32
+    },
+    "attachments": {
+      "accessors": [
+        "get:getAttachmentsToVariant__Q33Gap12TFBActorInfo9ActorInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x80463fcc"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": [
+        36,
+        44,
+        304
+      ]
+    },
+    "collisionInfo": {
+      "accessors": [
+        "get:getCollisionInfoToVariant__Q33Gap12TFBActorInfo9ActorInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x80463f68"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 276
+    },
+    "controller": {
+      "accessors": [
+        "get:getControllerToVariant__Q33Gap12TFBActorInfo9ActorInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x80463d68"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 300
+    },
+    "destination": {
+      "accessors": [
+        "set:setDestinationFromVariant__Q33Gap12TFBActorInfo9ActorInfoFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x80463db4"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": [
+        320,
+        324,
+        328
+      ]
+    },
+    "inactiveSet": {
+      "accessors": [
+        "get:getInactiveSetToVariant__Q33Gap12TFBActorInfo9ActorInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x80464028"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 36
+    },
+    "physicsParameters": {
+      "accessors": [
+        "get:getPhysicsParametersToVariant__Q33Gap12TFBActorInfo9ActorInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x80463e54"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 308
+    },
+    "playerSet": {
+      "accessors": [
+        "get:getPlayerSetToVariant__Q33Gap12TFBActorInfo9ActorInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x80464000"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 28
+    },
+    "removedSet": {
+      "accessors": [
+        "get:getRemovedSetToVariant__Q33Gap12TFBActorInfo9ActorInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8046403c"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 40
+    },
+    "vehicleParameters": {
+      "accessors": [
+        "get:getVehicleParametersToVariant__Q33Gap12TFBActorInfo9ActorInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x80463eb4"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 308
+    },
+    "waypoints": {
+      "accessors": [
+        "get:getWaypointsToVariant__Q33Gap12TFBActorInfo9ActorInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x804639b4"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 312
+    }
+  },
+  "Gap::TFBActorInfo::ActorPhysics": {
+    "airAcceleration": {
+      "accessors": [
+        "get:getAirAccelerationToVariant__Q33Gap12TFBActorInfo12ActorPhysicsCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8046274c",
+        "set:setAirAccelerationFromVariant__Q33Gap12TFBActorInfo12ActorPhysicsFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x8046275c"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 32
+    },
+    "airDeceleration": {
+      "accessors": [
+        "get:getAirDecelerationToVariant__Q33Gap12TFBActorInfo12ActorPhysicsCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x804627d0",
+        "set:setAirDecelerationFromVariant__Q33Gap12TFBActorInfo12ActorPhysicsFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x804627e0"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 36
+    },
+    "airMaxSpeed": {
+      "accessors": [
+        "get:getAirMaxSpeedToVariant__Q33Gap12TFBActorInfo12ActorPhysicsCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x804626c8",
+        "set:setAirMaxSpeedFromVariant__Q33Gap12TFBActorInfo12ActorPhysicsFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x804626d8"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 28
+    },
+    "airTurnRate": {
+      "accessors": [
+        "get:getAirTurnRateToVariant__Q33Gap12TFBActorInfo12ActorPhysicsCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x80462854",
+        "set:setAirTurnRateFromVariant__Q33Gap12TFBActorInfo12ActorPhysicsFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x80462864"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 40
+    },
+    "gravityAcceleration": {
+      "accessors": [
+        "get:getGravityAccelerationToVariant__Q33Gap12TFBActorInfo12ActorPhysicsCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8046295c",
+        "set:setGravityAccelerationFromVariant__Q33Gap12TFBActorInfo12ActorPhysicsFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x8046296c"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 48
+    },
+    "gravityMaxSpeed": {
+      "accessors": [
+        "get:getGravityMaxSpeedToVariant__Q33Gap12TFBActorInfo12ActorPhysicsCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x804628d8",
+        "set:setGravityMaxSpeedFromVariant__Q33Gap12TFBActorInfo12ActorPhysicsFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x804628e8"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 44
+    },
+    "groundAcceleration": {
+      "accessors": [
+        "get:getGroundAccelerationToVariant__Q33Gap12TFBActorInfo12ActorPhysicsCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8046253c",
+        "set:setGroundAccelerationFromVariant__Q33Gap12TFBActorInfo12ActorPhysicsFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x8046254c"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 16
+    },
+    "groundDeceleration": {
+      "accessors": [
+        "get:getGroundDecelerationToVariant__Q33Gap12TFBActorInfo12ActorPhysicsCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x804625c0",
+        "set:setGroundDecelerationFromVariant__Q33Gap12TFBActorInfo12ActorPhysicsFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x804625d0"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 20
+    },
+    "groundMaxSpeed": {
+      "accessors": [
+        "get:getGroundMaxSpeedToVariant__Q33Gap12TFBActorInfo12ActorPhysicsCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x804624b8",
+        "set:setGroundMaxSpeedFromVariant__Q33Gap12TFBActorInfo12ActorPhysicsFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x804624c8"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 12
+    },
+    "groundTurnRate": {
+      "accessors": [
+        "get:getGroundTurnRateToVariant__Q33Gap12TFBActorInfo12ActorPhysicsCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x80462644",
+        "set:setGroundTurnRateFromVariant__Q33Gap12TFBActorInfo12ActorPhysicsFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x80462654"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 24
+    },
+    "jumpAcceleration": {
+      "accessors": [
+        "get:getJumpAccelerationToVariant__Q33Gap12TFBActorInfo12ActorPhysicsCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x80462a64",
+        "set:setJumpAccelerationFromVariant__Q33Gap12TFBActorInfo12ActorPhysicsFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x80462a74"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 56
+    },
+    "jumpInitialSpeed": {
+      "accessors": [
+        "get:getJumpInitialSpeedToVariant__Q33Gap12TFBActorInfo12ActorPhysicsCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x80462ae8",
+        "set:setJumpInitialSpeedFromVariant__Q33Gap12TFBActorInfo12ActorPhysicsFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x80462af8"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 60
+    },
+    "jumpMaxSpeed": {
+      "accessors": [
+        "get:getJumpMaxSpeedToVariant__Q33Gap12TFBActorInfo12ActorPhysicsCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x804629e0",
+        "set:setJumpMaxSpeedFromVariant__Q33Gap12TFBActorInfo12ActorPhysicsFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x804629f0"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 52
+    },
+    "moveType": {
+      "accessors": [
+        "get:getMoveTypeToVariant__Q33Gap12TFBActorInfo12ActorPhysicsCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x80462b6c",
+        "set:setMoveTypeFromVariant__Q33Gap12TFBActorInfo12ActorPhysicsFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x80462b7c"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 64
+    },
+    "objectLogicScale": {
+      "accessors": [
+        "get:getObjectLogicScaleToVariant__Q33Gap12TFBActorInfo12ActorPhysicsCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x80462c8c",
+        "set:setObjectLogicScaleFromVariant__Q33Gap12TFBActorInfo12ActorPhysicsFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x80462ca4"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 72
+    }
+  },
+  "Gap::TFBActorInfo::VehiclePhysics": {
+    "antiFlipStrength": {
+      "accessors": [
+        "get:getAntiFlipStrengthToVariant__Q33Gap12TFBActorInfo14VehiclePhysicsCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8046373c",
+        "set:setAntiFlipStrengthFromVariant__Q33Gap12TFBActorInfo14VehiclePhysicsFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x8046374c"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 84
+    },
+    "centerOfMassX": {
+      "accessors": [
+        "get:getCenterOfMassXToVariant__Q33Gap12TFBActorInfo14VehiclePhysicsCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x804637c0",
+        "set:setCenterOfMassXFromVariant__Q33Gap12TFBActorInfo14VehiclePhysicsFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x804637d8"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 88
+    },
+    "centerOfMassY": {
+      "accessors": [
+        "get:getCenterOfMassYToVariant__Q33Gap12TFBActorInfo14VehiclePhysicsCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x80463854",
+        "set:setCenterOfMassYFromVariant__Q33Gap12TFBActorInfo14VehiclePhysicsFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x8046386c"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 92
+    },
+    "chassisFriction": {
+      "accessors": [
+        "get:getChassisFrictionToVariant__Q33Gap12TFBActorInfo14VehiclePhysicsCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x80463424",
+        "set:setChassisFrictionFromVariant__Q33Gap12TFBActorInfo14VehiclePhysicsFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x80463434"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 60
+    },
+    "chassisRestitution": {
+      "accessors": [
+        "get:getChassisRestitutionToVariant__Q33Gap12TFBActorInfo14VehiclePhysicsCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x804634a8",
+        "set:setChassisRestitutionFromVariant__Q33Gap12TFBActorInfo14VehiclePhysicsFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x804634b8"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 64
+    },
+    "engineMaxRPM": {
+      "accessors": [
+        "get:getEngineMaxRPMToVariant__Q33Gap12TFBActorInfo14VehiclePhysicsCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x80462e38",
+        "set:setEngineMaxRPMFromVariant__Q33Gap12TFBActorInfo14VehiclePhysicsFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x80462e48"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 12
+    },
+    "engineMaxTorque": {
+      "accessors": [
+        "get:getEngineMaxTorqueToVariant__Q33Gap12TFBActorInfo14VehiclePhysicsCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x80462ebc",
+        "set:setEngineMaxTorqueFromVariant__Q33Gap12TFBActorInfo14VehiclePhysicsFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x80462ecc"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 16
+    },
+    "maxSteerAngle": {
+      "accessors": [
+        "get:getMaxSteerAngleToVariant__Q33Gap12TFBActorInfo14VehiclePhysicsCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x80463068",
+        "set:setMaxSteerAngleFromVariant__Q33Gap12TFBActorInfo14VehiclePhysicsFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x80463078"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 28
+    },
+    "steerSensitivity": {
+      "accessors": [
+        "get:getSteerSensitivityToVariant__Q33Gap12TFBActorInfo14VehiclePhysicsCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x804630ec",
+        "set:setSteerSensitivityFromVariant__Q33Gap12TFBActorInfo14VehiclePhysicsFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x804630fc"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 32
+    },
+    "suspensionLength": {
+      "accessors": [
+        "get:getSuspensionLengthToVariant__Q33Gap12TFBActorInfo14VehiclePhysicsCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x80463170",
+        "set:setSuspensionLengthFromVariant__Q33Gap12TFBActorInfo14VehiclePhysicsFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x80463188"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 36
+    },
+    "suspensionLengthRear": {
+      "accessors": [
+        "get:getSuspensionLengthRearToVariant__Q33Gap12TFBActorInfo14VehiclePhysicsCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8046330c",
+        "set:setSuspensionLengthRearFromVariant__Q33Gap12TFBActorInfo14VehiclePhysicsFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x80463324"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 56
+    },
+    "suspensionStrength": {
+      "accessors": [
+        "get:getSuspensionStrengthToVariant__Q33Gap12TFBActorInfo14VehiclePhysicsCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x80463204",
+        "set:setSuspensionStrengthFromVariant__Q33Gap12TFBActorInfo14VehiclePhysicsFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x80463214"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 40
+    },
+    "tireCompressionDamperFront": {
+      "accessors": [
+        "get:getTireCompressionDamperFrontToVariant__Q33Gap12TFBActorInfo14VehiclePhysicsCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8046352c",
+        "set:setTireCompressionDamperFrontFromVariant__Q33Gap12TFBActorInfo14VehiclePhysicsFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x8046353c"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 68
+    },
+    "tireCompressionDamperRear": {
+      "accessors": [
+        "get:getTireCompressionDamperRearToVariant__Q33Gap12TFBActorInfo14VehiclePhysicsCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x804635b0",
+        "set:setTireCompressionDamperRearFromVariant__Q33Gap12TFBActorInfo14VehiclePhysicsFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x804635c0"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 72
+    },
+    "tireFriction": {
+      "accessors": [
+        "get:getTireFrictionToVariant__Q33Gap12TFBActorInfo14VehiclePhysicsCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x80463288",
+        "set:setTireFrictionFromVariant__Q33Gap12TFBActorInfo14VehiclePhysicsFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x80463298"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 44
+    },
+    "tireFrictionRear": {
+      "accessors": [
+        "get:getTireFrictionRearToVariant__Q33Gap12TFBActorInfo14VehiclePhysicsCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x804633a0",
+        "set:setTireFrictionRearFromVariant__Q33Gap12TFBActorInfo14VehiclePhysicsFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x804633b0"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 52
+    },
+    "tireRelaxDamperFront": {
+      "accessors": [
+        "get:getTireRelaxDamperFrontToVariant__Q33Gap12TFBActorInfo14VehiclePhysicsCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x80463634",
+        "set:setTireRelaxDamperFrontFromVariant__Q33Gap12TFBActorInfo14VehiclePhysicsFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x80463644"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 76
+    },
+    "tireRelaxDamperRear": {
+      "accessors": [
+        "get:getTireRelaxDamperRearToVariant__Q33Gap12TFBActorInfo14VehiclePhysicsCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x804636b8",
+        "set:setTireRelaxDamperRearFromVariant__Q33Gap12TFBActorInfo14VehiclePhysicsFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x804636c8"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 80
+    },
+    "topSpeed": {
+      "accessors": [
+        "get:getTopSpeedToVariant__Q33Gap12TFBActorInfo14VehiclePhysicsCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x80462f40",
+        "set:setTopSpeedFromVariant__Q33Gap12TFBActorInfo14VehiclePhysicsFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x80462f58"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 20
+    },
+    "topSpeedReverse": {
+      "accessors": [
+        "get:getTopSpeedReverseToVariant__Q33Gap12TFBActorInfo14VehiclePhysicsCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x80462fd4",
+        "set:setTopSpeedReverseFromVariant__Q33Gap12TFBActorInfo14VehiclePhysicsFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x80462fec"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 24
+    }
+  },
+  "Gap::TFBLightInfo::DirectionalLightInfo": {
+    "multiplier": {
+      "accessors": [
+        "set:setMultiplierFromVariant__Q33Gap12TFBLightInfo20DirectionalLightInfoFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x8046b47c",
+        "get:getMultiplierToVariant__Q33Gap12TFBLightInfo20DirectionalLightInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8046b46c"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 44
+    }
+  },
+  "Gap::TFBLightInfo::LightInfo": {
+    "activeSet": {
+      "accessors": [
+        "get:getActiveSetToVariant__Q33Gap12TFBLightInfo9LightInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8046b36c"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 32
+    },
+    "causticLight": {
+      "accessors": [
+        "get:getCausticLightToVariant__Q33Gap12TFBLightInfo9LightInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8046b31c"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 56
+    },
+    "constantAttenuationCoeff": {
+      "accessors": [
+        "get:getConstantAttenuationCoeffToVariant__Q33Gap12TFBLightInfo9LightInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8046b1ac",
+        "set:setConstantAttenuationCoeffFromVariant__Q33Gap12TFBLightInfo9LightInfoFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x8046b1bc"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 312
+    },
+    "cutoffAngle": {
+      "accessors": [
+        "get:getCutoffAngleToVariant__Q33Gap12TFBLightInfo9LightInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8046b18c",
+        "set:setCutoffAngleFromVariant__Q33Gap12TFBLightInfo9LightInfoFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x8046b19c"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 308
+    },
+    "directional1": {
+      "accessors": [
+        "get:getDirectional1ToVariant__Q33Gap12TFBLightInfo9LightInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8046b2e0"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 44
+    },
+    "directional2": {
+      "accessors": [
+        "get:getDirectional2ToVariant__Q33Gap12TFBLightInfo9LightInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8046b2f4"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 48
+    },
+    "directional3": {
+      "accessors": [
+        "get:getDirectional3ToVariant__Q33Gap12TFBLightInfo9LightInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8046b308"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 52
+    },
+    "falloffRate": {
+      "accessors": [
+        "get:getFalloffRateToVariant__Q33Gap12TFBLightInfo9LightInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8046b16c",
+        "set:setFalloffRateFromVariant__Q33Gap12TFBLightInfo9LightInfoFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x8046b17c"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 304
+    },
+    "inactiveSet": {
+      "accessors": [
+        "get:getInactiveSetToVariant__Q33Gap12TFBLightInfo9LightInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8046b380"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 36
+    },
+    "lightType": {
+      "accessors": [
+        "get:getLightTypeToVariant__Q33Gap12TFBLightInfo9LightInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8046b14c",
+        "set:setLightTypeFromVariant__Q33Gap12TFBLightInfo9LightInfoFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x8046b15c"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 300
+    },
+    "linearAttenuationCoeff": {
+      "accessors": [
+        "get:getLinearAttenuationCoeffToVariant__Q33Gap12TFBLightInfo9LightInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8046b1cc",
+        "set:setLinearAttenuationCoeffFromVariant__Q33Gap12TFBLightInfo9LightInfoFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x8046b1dc"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 316
+    },
+    "multiplier": {
+      "accessors": [
+        "get:getMultiplierToVariant__Q33Gap12TFBLightInfo9LightInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8046b2c0",
+        "set:setMultiplierFromVariant__Q33Gap12TFBLightInfo9LightInfoFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x8046b2d0"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 336
+    },
+    "quadraticAttenuationCoeff": {
+      "accessors": [
+        "get:getQuadraticAttenuationCoeffToVariant__Q33Gap12TFBLightInfo9LightInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8046b1ec",
+        "set:setQuadraticAttenuationCoeffFromVariant__Q33Gap12TFBLightInfo9LightInfoFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x8046b1fc"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 320
+    },
+    "removedSet": {
+      "accessors": [
+        "get:getRemovedSetToVariant__Q33Gap12TFBLightInfo9LightInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8046b394"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 40
+    },
+    "spriteLight1": {
+      "accessors": [
+        "get:getSpriteLight1ToVariant__Q33Gap12TFBLightInfo9LightInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8046b330"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 60
+    },
+    "spriteLight2": {
+      "accessors": [
+        "get:getSpriteLight2ToVariant__Q33Gap12TFBLightInfo9LightInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8046b344"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 64
+    },
+    "spriteLight3": {
+      "accessors": [
+        "get:getSpriteLight3ToVariant__Q33Gap12TFBLightInfo9LightInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8046b358"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 68
+    }
+  },
+  "Gap::TFBModelInfo::AnimationInfo": {
+    "ambient": {
+      "accessors": [
+        "get:getAmbientToVariant__Q33Gap12TFBModelInfo13AnimationInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803de340"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": [
+        8,
+        20
+      ]
+    },
+    "animationPalette": {
+      "accessors": [
+        "get:getAnimationPaletteToVariant__Q33Gap12TFBModelInfo13AnimationInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803de508"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 28
+    },
+    "jump": {
+      "accessors": [
+        "get:getJumpToVariant__Q33Gap12TFBModelInfo13AnimationInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803de498"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": [
+        8,
+        12,
+        20
+      ]
+    },
+    "run": {
+      "accessors": [
+        "get:getRunToVariant__Q33Gap12TFBModelInfo13AnimationInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803de428"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": [
+        8,
+        20
+      ]
+    },
+    "walk": {
+      "accessors": [
+        "get:getWalkToVariant__Q33Gap12TFBModelInfo13AnimationInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803de3b8"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": [
+        4,
+        8,
+        20
+      ]
+    }
+  },
+  "Gap::TFBParticleInfo::GeneratorAppearanceFields": {
+    "endRotationSpeed": {
+      "accessors": [
+        "get:getEndRotationSpeedToVariant__Q33Gap15TFBParticleInfo25GeneratorAppearanceFieldsCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803e0534",
+        "set:setEndRotationSpeedFromVariant__Q33Gap15TFBParticleInfo25GeneratorAppearanceFieldsFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x803e054c"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 120
+    },
+    "endRotationSpeedRandomness": {
+      "accessors": [
+        "get:getEndRotationSpeedRandomnessToVariant__Q33Gap15TFBParticleInfo25GeneratorAppearanceFieldsCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803e0564",
+        "set:setEndRotationSpeedRandomnessFromVariant__Q33Gap15TFBParticleInfo25GeneratorAppearanceFieldsFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x803e057c"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 124
+    },
+    "initialRotationAngle": {
+      "accessors": [
+        "get:getInitialRotationAngleToVariant__Q33Gap15TFBParticleInfo25GeneratorAppearanceFieldsCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803e0414",
+        "set:setInitialRotationAngleFromVariant__Q33Gap15TFBParticleInfo25GeneratorAppearanceFieldsFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x803e042c"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 104
+    },
+    "initialRotationAngleRandomness": {
+      "accessors": [
+        "get:getInitialRotationAngleRandomnessToVariant__Q33Gap15TFBParticleInfo25GeneratorAppearanceFieldsCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803e0444",
+        "set:setInitialRotationAngleRandomnessFromVariant__Q33Gap15TFBParticleInfo25GeneratorAppearanceFieldsFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x803e045c"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 108
+    },
+    "midRotationSpeed": {
+      "accessors": [
+        "get:getMidRotationSpeedToVariant__Q33Gap15TFBParticleInfo25GeneratorAppearanceFieldsCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803e04d4",
+        "set:setMidRotationSpeedFromVariant__Q33Gap15TFBParticleInfo25GeneratorAppearanceFieldsFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x803e04ec"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 244
+    },
+    "midRotationSpeedRandomness": {
+      "accessors": [
+        "get:getMidRotationSpeedRandomnessToVariant__Q33Gap15TFBParticleInfo25GeneratorAppearanceFieldsCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803e0504",
+        "set:setMidRotationSpeedRandomnessFromVariant__Q33Gap15TFBParticleInfo25GeneratorAppearanceFieldsFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x803e051c"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 248
+    },
+    "startRotationSpeed": {
+      "accessors": [
+        "get:getStartRotationSpeedToVariant__Q33Gap15TFBParticleInfo25GeneratorAppearanceFieldsCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803e0474",
+        "set:setStartRotationSpeedFromVariant__Q33Gap15TFBParticleInfo25GeneratorAppearanceFieldsFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x803e048c"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 112
+    },
+    "startRotationSpeedRandomness": {
+      "accessors": [
+        "get:getStartRotationSpeedRandomnessToVariant__Q33Gap15TFBParticleInfo25GeneratorAppearanceFieldsCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803e04a4",
+        "set:setStartRotationSpeedRandomnessFromVariant__Q33Gap15TFBParticleInfo25GeneratorAppearanceFieldsFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x803e04bc"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 116
+    }
+  },
+  "Gap::TFBParticleInfo::GeneratorGenerationFields": {
+    "currentlyAlive": {
+      "accessors": [
+        "get:getCurrentlyAliveToVariant__Q33Gap15TFBParticleInfo25GeneratorGenerationFieldsCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803df574"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 40
+    },
+    "lifespan": {
+      "accessors": [
+        "set:setLifespanFromVariant__Q33Gap15TFBParticleInfo25GeneratorGenerationFieldsFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x803df594",
+        "get:getLifespanToVariant__Q33Gap15TFBParticleInfo25GeneratorGenerationFieldsCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803df584"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 44
+    },
+    "lifespanRandomness": {
+      "accessors": [
+        "set:setLifespanRandomnessFromVariant__Q33Gap15TFBParticleInfo25GeneratorGenerationFieldsFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x803df5b4",
+        "get:getLifespanRandomnessToVariant__Q33Gap15TFBParticleInfo25GeneratorGenerationFieldsCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803df5a4"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 48
+    },
+    "maxAlive": {
+      "accessors": [
+        "set:setMaxAliveFromVariant__Q33Gap15TFBParticleInfo25GeneratorGenerationFieldsFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x803df564",
+        "get:getMaxAliveToVariant__Q33Gap15TFBParticleInfo25GeneratorGenerationFieldsCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803df554"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 36
+    },
+    "maxDistance": {
+      "accessors": [
+        "set:setMaxDistanceFromVariant__Q33Gap15TFBParticleInfo25GeneratorGenerationFieldsFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x803df5dc",
+        "get:getMaxDistanceToVariant__Q33Gap15TFBParticleInfo25GeneratorGenerationFieldsCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803df5c4"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 52
+    },
+    "midpointPercent": {
+      "accessors": [
+        "set:setMidpointPercentFromVariant__Q33Gap15TFBParticleInfo25GeneratorGenerationFieldsFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x803df60c",
+        "get:getMidpointPercentToVariant__Q33Gap15TFBParticleInfo25GeneratorGenerationFieldsCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803df5f4"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 56
+    },
+    "spawnRate": {
+      "accessors": [
+        "set:setSpawnRateFromVariant__Q33Gap15TFBParticleInfo25GeneratorGenerationFieldsFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x803df544",
+        "get:getSpawnRateToVariant__Q33Gap15TFBParticleInfo25GeneratorGenerationFieldsCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803df534"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 32
+    }
+  },
+  "Gap::TFBParticleInfo::GeneratorInfo": {
+    "affectorList": {
+      "accessors": [
+        "get:getAffectorListToVariant__Q33Gap15TFBParticleInfo13GeneratorInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803e0640"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 40
+    },
+    "appearanceFields": {
+      "accessors": [
+        "get:getAppearanceFieldsToVariant__Q33Gap15TFBParticleInfo13GeneratorInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803e0650"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 44
+    },
+    "generationFields": {
+      "accessors": [
+        "get:getGenerationFieldsToVariant__Q33Gap15TFBParticleInfo13GeneratorInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803e0620"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 32
+    },
+    "movementFields": {
+      "accessors": [
+        "get:getMovementFieldsToVariant__Q33Gap15TFBParticleInfo13GeneratorInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803e0630"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 36
+    }
+  },
+  "Gap::TFBParticleInfo::GeneratorMovementFields": {
+    "endAccel": {
+      "accessors": [
+        "get:getEndAccelToVariant__Q33Gap15TFBParticleInfo23GeneratorMovementFieldsCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803dfb50",
+        "set:setEndAccelFromVariant__Q33Gap15TFBParticleInfo23GeneratorMovementFieldsFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x803dfb68"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 108
+    },
+    "endAccelDirection": {
+      "accessors": [
+        "set:setEndAccelDirectionFromVariant__Q33Gap15TFBParticleInfo23GeneratorMovementFieldsFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x803dfbc0"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": [
+        92,
+        96,
+        100
+      ]
+    },
+    "endAccelDirectionSpread": {
+      "accessors": [
+        "get:getEndAccelDirectionSpreadToVariant__Q33Gap15TFBParticleInfo23GeneratorMovementFieldsCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803dfbe4",
+        "set:setEndAccelDirectionSpreadFromVariant__Q33Gap15TFBParticleInfo23GeneratorMovementFieldsFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x803dfbfc"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 104
+    },
+    "endAccelRandomness": {
+      "accessors": [
+        "get:getEndAccelRandomnessToVariant__Q33Gap15TFBParticleInfo23GeneratorMovementFieldsCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803dfb80",
+        "set:setEndAccelRandomnessFromVariant__Q33Gap15TFBParticleInfo23GeneratorMovementFieldsFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x803dfb98"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 112
+    },
+    "endDrag": {
+      "accessors": [
+        "get:getEndDragToVariant__Q33Gap15TFBParticleInfo23GeneratorMovementFieldsCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803dfc74",
+        "set:setEndDragFromVariant__Q33Gap15TFBParticleInfo23GeneratorMovementFieldsFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x803dfc8c"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 120
+    },
+    "endGravity": {
+      "accessors": [
+        "get:getEndGravityToVariant__Q33Gap15TFBParticleInfo23GeneratorMovementFieldsCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803dfd04",
+        "set:setEndGravityFromVariant__Q33Gap15TFBParticleInfo23GeneratorMovementFieldsFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x803dfd1c"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 128
+    },
+    "initialDirectionSpread": {
+      "accessors": [
+        "get:getInitialDirectionSpreadToVariant__Q33Gap15TFBParticleInfo23GeneratorMovementFieldsCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803df998",
+        "set:setInitialDirectionSpreadFromVariant__Q33Gap15TFBParticleInfo23GeneratorMovementFieldsFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x803df9b0"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 64
+    },
+    "initialSpeed": {
+      "accessors": [
+        "get:getInitialSpeedToVariant__Q33Gap15TFBParticleInfo23GeneratorMovementFieldsCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803df938",
+        "set:setInitialSpeedFromVariant__Q33Gap15TFBParticleInfo23GeneratorMovementFieldsFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x803df950"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 44
+    },
+    "initialSpeedRandomness": {
+      "accessors": [
+        "get:getInitialSpeedRandomnessToVariant__Q33Gap15TFBParticleInfo23GeneratorMovementFieldsCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803df968",
+        "set:setInitialSpeedRandomnessFromVariant__Q33Gap15TFBParticleInfo23GeneratorMovementFieldsFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x803df980"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 48
+    },
+    "midAccel": {
+      "accessors": [
+        "get:getMidAccelToVariant__Q33Gap15TFBParticleInfo23GeneratorMovementFieldsCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803dfa8c",
+        "set:setMidAccelFromVariant__Q33Gap15TFBParticleInfo23GeneratorMovementFieldsFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x803dfaa4"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 132
+    },
+    "midAccelDirection": {
+      "accessors": [
+        "set:setMidAccelDirectionFromVariant__Q33Gap15TFBParticleInfo23GeneratorMovementFieldsFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x803dfafc"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": [
+        140,
+        144,
+        148
+      ]
+    },
+    "midAccelDirectionSpread": {
+      "accessors": [
+        "get:getMidAccelDirectionSpreadToVariant__Q33Gap15TFBParticleInfo23GeneratorMovementFieldsCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803dfb20",
+        "set:setMidAccelDirectionSpreadFromVariant__Q33Gap15TFBParticleInfo23GeneratorMovementFieldsFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x803dfb38"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 152
+    },
+    "midAccelRandomness": {
+      "accessors": [
+        "get:getMidAccelRandomnessToVariant__Q33Gap15TFBParticleInfo23GeneratorMovementFieldsCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803dfabc",
+        "set:setMidAccelRandomnessFromVariant__Q33Gap15TFBParticleInfo23GeneratorMovementFieldsFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x803dfad4"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 136
+    },
+    "midDrag": {
+      "accessors": [
+        "get:getMidDragToVariant__Q33Gap15TFBParticleInfo23GeneratorMovementFieldsCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803dfc44",
+        "set:setMidDragFromVariant__Q33Gap15TFBParticleInfo23GeneratorMovementFieldsFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x803dfc5c"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 156
+    },
+    "midGravity": {
+      "accessors": [
+        "get:getMidGravityToVariant__Q33Gap15TFBParticleInfo23GeneratorMovementFieldsCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803dfcd4",
+        "set:setMidGravityFromVariant__Q33Gap15TFBParticleInfo23GeneratorMovementFieldsFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x803dfcec"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 160
+    },
+    "spawnVolumeHeight": {
+      "accessors": [
+        "get:getSpawnVolumeHeightToVariant__Q33Gap15TFBParticleInfo23GeneratorMovementFieldsCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803df908",
+        "set:setSpawnVolumeHeightFromVariant__Q33Gap15TFBParticleInfo23GeneratorMovementFieldsFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x803df920"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 36
+    },
+    "spawnVolumeLength": {
+      "accessors": [
+        "get:getSpawnVolumeLengthToVariant__Q33Gap15TFBParticleInfo23GeneratorMovementFieldsCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803df8d8",
+        "set:setSpawnVolumeLengthFromVariant__Q33Gap15TFBParticleInfo23GeneratorMovementFieldsFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x803df8f0"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 40
+    },
+    "spawnVolumeWidth": {
+      "accessors": [
+        "get:getSpawnVolumeWidthToVariant__Q33Gap15TFBParticleInfo23GeneratorMovementFieldsCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803df8a8",
+        "set:setSpawnVolumeWidthFromVariant__Q33Gap15TFBParticleInfo23GeneratorMovementFieldsFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x803df8c0"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 32
+    },
+    "startAccel": {
+      "accessors": [
+        "get:getStartAccelToVariant__Q33Gap15TFBParticleInfo23GeneratorMovementFieldsCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803df9c8",
+        "set:setStartAccelFromVariant__Q33Gap15TFBParticleInfo23GeneratorMovementFieldsFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x803df9e0"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 68
+    },
+    "startAccelDirection": {
+      "accessors": [
+        "set:setStartAccelDirectionFromVariant__Q33Gap15TFBParticleInfo23GeneratorMovementFieldsFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x803dfa38"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": [
+        76,
+        80,
+        84
+      ]
+    },
+    "startAccelDirectionSpread": {
+      "accessors": [
+        "get:getStartAccelDirectionSpreadToVariant__Q33Gap15TFBParticleInfo23GeneratorMovementFieldsCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803dfa5c",
+        "set:setStartAccelDirectionSpreadFromVariant__Q33Gap15TFBParticleInfo23GeneratorMovementFieldsFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x803dfa74"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 88
+    },
+    "startAccelRandomness": {
+      "accessors": [
+        "get:getStartAccelRandomnessToVariant__Q33Gap15TFBParticleInfo23GeneratorMovementFieldsCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803df9f8",
+        "set:setStartAccelRandomnessFromVariant__Q33Gap15TFBParticleInfo23GeneratorMovementFieldsFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x803dfa10"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 72
+    },
+    "startDrag": {
+      "accessors": [
+        "get:getStartDragToVariant__Q33Gap15TFBParticleInfo23GeneratorMovementFieldsCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803dfc14",
+        "set:setStartDragFromVariant__Q33Gap15TFBParticleInfo23GeneratorMovementFieldsFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x803dfc2c"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 116
+    },
+    "startGravity": {
+      "accessors": [
+        "get:getStartGravityToVariant__Q33Gap15TFBParticleInfo23GeneratorMovementFieldsCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803dfca4",
+        "set:setStartGravityFromVariant__Q33Gap15TFBParticleInfo23GeneratorMovementFieldsFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x803dfcbc"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 124
+    }
+  },
+  "Gap::TFBParticleInfo::ParticleInfo": {
+    "activeSet": {
+      "accessors": [
+        "get:getActiveSetToVariant__Q33Gap15TFBParticleInfo12ParticleInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803e06ec"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 32
+    },
+    "generatorSet": {
+      "accessors": [
+        "get:getGeneratorSetToVariant__Q33Gap15TFBParticleInfo12ParticleInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803e06c4"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": [
+        20,
+        44,
+        300
+      ]
+    },
+    "inactiveSet": {
+      "accessors": [
+        "get:getInactiveSetToVariant__Q33Gap15TFBParticleInfo12ParticleInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803e0700"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 36
+    },
+    "removedSet": {
+      "accessors": [
+        "get:getRemovedSetToVariant__Q33Gap15TFBParticleInfo12ParticleInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803e0714"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 40
+    }
+  },
+  "Gap::TFBScriptInfo::AbstractPlacement": {
+    "activator": {
+      "accessors": [
+        "get:getActivatorToVariant__Q33Gap13TFBScriptInfo17AbstractPlacementCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803efe64"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": [
+        40,
+        172
+      ]
+    },
+    "animationList": {
+      "accessors": [
+        "get:getAnimationListToVariant__Q33Gap13TFBScriptInfo17AbstractPlacementCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803efe88"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 224
+    },
+    "attachedObjects": {
+      "accessors": [
+        "get:getAttachedObjectsToVariant__Q33Gap13TFBScriptInfo17AbstractPlacementCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803f028c"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 192
+    },
+    "attachment": {
+      "accessors": [
+        "get:getAttachmentToVariant__Q33Gap13TFBScriptInfo17AbstractPlacementCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803efed8"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": [
+        184,
+        188,
+        192
+      ]
+    },
+    "clones": {
+      "accessors": [
+        "get:getClonesToVariant__Q33Gap13TFBScriptInfo17AbstractPlacementCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803efe3c"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 164
+    },
+    "iD": {
+      "accessors": [
+        "set:setIDFromVariant__Q33Gap13TFBScriptInfo17AbstractPlacementFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x803efd1c",
+        "get:getIDToVariant__Q33Gap13TFBScriptInfo17AbstractPlacementCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803efd0c"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 228
+    },
+    "parent": {
+      "accessors": [
+        "get:getParentToVariant__Q33Gap13TFBScriptInfo17AbstractPlacementCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803efe4c"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 168
+    },
+    "soundList": {
+      "accessors": [
+        "get:getSoundListToVariant__Q33Gap13TFBScriptInfo17AbstractPlacementCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803efe78"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 220
+    }
+  },
+  "Gap::TFBScriptInfo::ButtonMeasurement": {
+    "pressureState": {
+      "accessors": [
+        "get:getPressureStateToVariant__Q33Gap13TFBScriptInfo17ButtonMeasurementCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803e9094"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": -200
+    },
+    "pressureValue": {
+      "accessors": [
+        "get:getPressureValueToVariant__Q33Gap13TFBScriptInfo17ButtonMeasurementCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803e90a8"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 4
+    }
+  },
+  "Gap::TFBScriptInfo::ClonedSequence": {
+    "activator": {
+      "accessors": [
+        "get:getActivatorToVariant__Q33Gap13TFBScriptInfo14ClonedSequenceCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803fa30c"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": [
+        40,
+        48
+      ]
+    },
+    "clones": {
+      "accessors": [
+        "get:getClonesToVariant__Q33Gap13TFBScriptInfo14ClonedSequenceCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803fa2e4"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 52
+    },
+    "parent": {
+      "accessors": [
+        "get:getParentToVariant__Q33Gap13TFBScriptInfo14ClonedSequenceCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803fa2f4"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 56
+    }
+  },
+  "Gap::TFBScriptInfo::CollisionInfo": {
+    "environmentContacts": {
+      "accessors": [
+        "get:getEnvironmentContactsToVariant__Q33Gap13TFBScriptInfo13CollisionInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803ea32c"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 144
+    },
+    "height": {
+      "accessors": [
+        "get:getHeightToVariant__Q33Gap13TFBScriptInfo13CollisionInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803ea4ac",
+        "set:setHeightFromVariant__Q33Gap13TFBScriptInfo13CollisionInfoFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x803ea4bc"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 116
+    },
+    "length": {
+      "accessors": [
+        "get:getLengthToVariant__Q33Gap13TFBScriptInfo13CollisionInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803ea420",
+        "set:setLengthFromVariant__Q33Gap13TFBScriptInfo13CollisionInfoFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x803ea430"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 120
+    },
+    "rebound": {
+      "accessors": [
+        "get:getReboundToVariant__Q33Gap13TFBScriptInfo13CollisionInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803ea900",
+        "set:setReboundFromVariant__Q33Gap13TFBScriptInfo13CollisionInfoFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x803ea910"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 128
+    },
+    "shape": {
+      "accessors": [
+        "get:getShapeToVariant__Q33Gap13TFBScriptInfo13CollisionInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803ea98c",
+        "set:setShapeFromVariant__Q33Gap13TFBScriptInfo13CollisionInfoFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x803ea99c"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 32
+    },
+    "weight": {
+      "accessors": [
+        "get:getWeightToVariant__Q33Gap13TFBScriptInfo13CollisionInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803ea874",
+        "set:setWeightFromVariant__Q33Gap13TFBScriptInfo13CollisionInfoFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x803ea884"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 124
+    },
+    "width": {
+      "accessors": [
+        "get:getWidthToVariant__Q33Gap13TFBScriptInfo13CollisionInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803ea394",
+        "set:setWidthFromVariant__Q33Gap13TFBScriptInfo13CollisionInfoFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x803ea3a4"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 112
+    }
+  },
+  "Gap::TFBScriptInfo::ContactInfo": {
+    "isTrigger": {
+      "accessors": [
+        "get:getIsTriggerToVariant__Q33Gap13TFBScriptInfo11ContactInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803ead58"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 64
+    }
+  },
+  "Gap::TFBScriptInfo::GestureMeasurement": {
+    "pressureState": {
+      "accessors": [
+        "set:setPressureStateFromVariant__Q33Gap13TFBScriptInfo18GestureMeasurementFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x803e9414",
+        "get:getPressureStateToVariant__Q33Gap13TFBScriptInfo18GestureMeasurementCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803e9404"
+      ],
+      "kind": [
+        "int",
+        "mixed"
+      ],
+      "offset": [
+        -1,
+        3
+      ]
+    },
+    "pressureValue": {
+      "accessors": [
+        "get:getPressureValueToVariant__Q33Gap13TFBScriptInfo18GestureMeasurementCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803e943c"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 3
+    }
+  },
+  "Gap::TFBScriptInfo::GestureStickMeasurement": {
+    "gestureStickConnection": {
+      "accessors": [
+        "set:setGestureStickConnectionFromVariant__Q33Gap13TFBScriptInfo23GestureStickMeasurementFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x803e9630",
+        "get:getGestureStickConnectionToVariant__Q33Gap13TFBScriptInfo23GestureStickMeasurementCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803e9620"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 7
+    },
+    "gestureStickX": {
+      "accessors": [
+        "get:getGestureStickXToVariant__Q33Gap13TFBScriptInfo23GestureStickMeasurementCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803e944c",
+        "set:setGestureStickXFromVariant__Q33Gap13TFBScriptInfo23GestureStickMeasurementFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x803e945c"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 11
+    },
+    "gestureStickY": {
+      "accessors": [
+        "get:getGestureStickYToVariant__Q33Gap13TFBScriptInfo23GestureStickMeasurementCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803e946c",
+        "set:setGestureStickYFromVariant__Q33Gap13TFBScriptInfo23GestureStickMeasurementFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x803e947c"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 15
+    }
+  },
+  "Gap::TFBScriptInfo::JoystickMeasurement": {
+    "joystickConnection": {
+      "accessors": [
+        "get:getJoystickConnectionToVariant__Q33Gap13TFBScriptInfo19JoystickMeasurementCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803e93ec"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 8
+    }
+  },
+  "Gap::TFBScriptInfo::NameExtractor": {
+    "namedObject": {
+      "accessors": [
+        "get:getNamedObjectToVariant__Q33Gap13TFBScriptInfo13NameExtractorCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x80402e10"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 52
+    }
+  },
+  "Gap::TFBScriptInfo::OpCheckFOV": {
+    "cachedSubSet": {
+      "accessors": [
+        "get:getCachedSubSetToVariant__Q33Gap13TFBScriptInfo10OpCheckFOVCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803ee948"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 52
+    }
+  },
+  "Gap::TFBScriptInfo::OpFindSubSet": {
+    "cachedSubSet": {
+      "accessors": [
+        "get:getCachedSubSetToVariant__Q33Gap13TFBScriptInfo12OpFindSubSetCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803fc6fc"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 56
+    }
+  },
+  "Gap::TFBScriptInfo::OpFindVariable": {
+    "cachedVar": {
+      "accessors": [
+        "get:getCachedVarToVariant__Q33Gap13TFBScriptInfo14OpFindVariableCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803f8d44",
+        "set:setCachedVarFromVariant__Q33Gap13TFBScriptInfo14OpFindVariableFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x803f8d94"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": [
+        20,
+        24,
+        60
+      ]
+    }
+  },
+  "Gap::TFBScriptInfo::OpForEach": {
+    "member": {
+      "accessors": [
+        "get:getMemberToVariant__Q33Gap13TFBScriptInfo9OpForEachCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803f7aec"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 60
+    }
+  },
+  "Gap::TFBScriptInfo::OpLoopValue": {
+    "loopIndex": {
+      "accessors": [
+        "get:getLoopIndexToVariant__Q33Gap13TFBScriptInfo11OpLoopValueCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803fc70c"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 40
+    }
+  },
+  "Gap::TFBScriptInfo::OpSlideValue": {
+    "cachedSlider": {
+      "accessors": [
+        "get:getCachedSliderToVariant__Q33Gap13TFBScriptInfo12OpSlideValueCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803fc6dc"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 60
+    }
+  },
+  "Gap::TFBScriptInfo::OpStartSequence": {
+    "cachedSequence": {
+      "accessors": [
+        "get:getCachedSequenceToVariant__Q33Gap13TFBScriptInfo15OpStartSequenceCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803fa5cc"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": [
+        20,
+        48
+      ]
+    }
+  },
+  "Gap::TFBScriptInfo::OpTopLevelBehavior": {
+    "curBehavior": {
+      "accessors": [
+        "get:getCurBehaviorToVariant__Q33Gap13TFBScriptInfo18OpTopLevelBehaviorCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803e52a4"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 252
+    },
+    "myself": {
+      "accessors": [
+        "get:getMyselfToVariant__Q33Gap13TFBScriptInfo18OpTopLevelBehaviorCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803e5228"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": [
+        32,
+        36
+      ]
+    }
+  },
+  "Gap::TFBScriptInfo::Placement": {
+    "activationRange": {
+      "accessors": [
+        "get:getActivationRangeToVariant__Q33Gap13TFBScriptInfo9PlacementCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803f187c",
+        "set:setActivationRangeFromVariant__Q33Gap13TFBScriptInfo9PlacementFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x803f188c"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 284
+    },
+    "deactivationBuffer": {
+      "accessors": [
+        "get:getDeactivationBufferToVariant__Q33Gap13TFBScriptInfo9PlacementCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803f18f0",
+        "set:setDeactivationBufferFromVariant__Q33Gap13TFBScriptInfo9PlacementFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x803f1900"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 288
+    },
+    "scriptSuspended": {
+      "accessors": [
+        "get:getScriptSuspendedToVariant__Q33Gap13TFBScriptInfo9PlacementCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803f1b54",
+        "set:setScriptSuspendedFromVariant__Q33Gap13TFBScriptInfo9PlacementFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x803f1b68"
+      ],
+      "kind": [
+        "int",
+        "mixed"
+      ],
+      "offset": 260
+    },
+    "shadowCastMethod": {
+      "accessors": [
+        "get:getShadowCastMethodToVariant__Q33Gap13TFBScriptInfo9PlacementCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803f19b0",
+        "set:setShadowCastMethodFromVariant__Q33Gap13TFBScriptInfo9PlacementFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x803f19cc"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 292
+    }
+  },
+  "Gap::TFBScriptInfo::RayContact": {
+    "end": {
+      "accessors": [
+        "get:getEndToVariant__Q33Gap13TFBScriptInfo10RayContactCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803eb444"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 76
+    },
+    "hasContact": {
+      "accessors": [
+        "get:getHasContactToVariant__Q33Gap13TFBScriptInfo10RayContactCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803eb46c"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 80
+    },
+    "start": {
+      "accessors": [
+        "get:getStartToVariant__Q33Gap13TFBScriptInfo10RayContactCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803eb41c"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 72
+    }
+  },
+  "Gap::TFBScriptInfo::ScaleMeasurement": {
+    "xScale": {
+      "accessors": [
+        "set:setXScaleFromVariant__Q33Gap13TFBScriptInfo16ScaleMeasurementFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x803ee9c0",
+        "get:getXScaleToVariant__Q33Gap13TFBScriptInfo16ScaleMeasurementCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803ee9b0"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": -1
+    },
+    "yScale": {
+      "accessors": [
+        "set:setYScaleFromVariant__Q33Gap13TFBScriptInfo16ScaleMeasurementFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x803ee9e0",
+        "get:getYScaleToVariant__Q33Gap13TFBScriptInfo16ScaleMeasurementCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803ee9d0"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 3
+    },
+    "zScale": {
+      "accessors": [
+        "set:setZScaleFromVariant__Q33Gap13TFBScriptInfo16ScaleMeasurementFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x803eea00",
+        "get:getZScaleToVariant__Q33Gap13TFBScriptInfo16ScaleMeasurementCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803ee9f0"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 7
+    }
+  },
+  "Gap::TFBScriptInfo::ScreenMeasurement": {
+    "x": {
+      "accessors": [
+        "get:getXToVariant__Q33Gap13TFBScriptInfo17ScreenMeasurementCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x80403080"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 22040
+    },
+    "y": {
+      "accessors": [
+        "get:getYToVariant__Q33Gap13TFBScriptInfo17ScreenMeasurementCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x804030ec"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 22040
+    }
+  },
+  "Gap::TFBScriptInfo::ScriptController": {
+    "activeControllers": {
+      "accessors": [
+        "get:getActiveControllersToVariant__Q33Gap13TFBScriptInfo16ScriptControllerCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803e8a4c"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 8
+    },
+    "controller1": {
+      "accessors": [
+        "get:getController1ToVariant__Q33Gap13TFBScriptInfo16ScriptControllerCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803e8a64"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": [
+        8,
+        20,
+        8288
+      ]
+    },
+    "controller2": {
+      "accessors": [
+        "get:getController2ToVariant__Q33Gap13TFBScriptInfo16ScriptControllerCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803e8b60"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": [
+        4,
+        8,
+        20
+      ]
+    },
+    "controller3": {
+      "accessors": [
+        "get:getController3ToVariant__Q33Gap13TFBScriptInfo16ScriptControllerCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803e8c70"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": [
+        8,
+        20
+      ]
+    },
+    "controller4": {
+      "accessors": [
+        "get:getController4ToVariant__Q33Gap13TFBScriptInfo16ScriptControllerCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803e8d80"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": [
+        8,
+        12,
+        20
+      ]
+    },
+    "lastInputTime": {
+      "accessors": [
+        "get:getLastInputTimeToVariant__Q33Gap13TFBScriptInfo16ScriptControllerCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803e9078"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 56
+    },
+    "physicalController1": {
+      "accessors": [
+        "get:getPhysicalController1ToVariant__Q33Gap13TFBScriptInfo16ScriptControllerCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803e8e90"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": [
+        8,
+        20
+      ]
+    },
+    "physicalController2": {
+      "accessors": [
+        "get:getPhysicalController2ToVariant__Q33Gap13TFBScriptInfo16ScriptControllerCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803e8ee0"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": [
+        4,
+        8,
+        20
+      ]
+    },
+    "physicalController3": {
+      "accessors": [
+        "get:getPhysicalController3ToVariant__Q33Gap13TFBScriptInfo16ScriptControllerCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803e8f30"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": [
+        8,
+        20
+      ]
+    },
+    "physicalController4": {
+      "accessors": [
+        "get:getPhysicalController4ToVariant__Q33Gap13TFBScriptInfo16ScriptControllerCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803e8f80"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": [
+        8,
+        12,
+        20
+      ]
+    },
+    "richPresence": {
+      "accessors": [
+        "get:getRichPresenceToVariant__Q33Gap13TFBScriptInfo16ScriptControllerCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803e8940"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": [
+        20,
+        28,
+        312
+      ]
+    }
+  },
+  "Gap::TFBScriptInfo::ScriptSet": {
+    "set": {
+      "accessors": [
+        "get:getSetToVariant__Q33Gap13TFBScriptInfo9ScriptSetCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803ffc88"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 32
+    }
+  },
+  "Gap::TFBScriptInfo::Sequence": {
+    "ignoreTimeScales": {
+      "accessors": [
+        "get:getIgnoreTimeScalesToVariant__Q33Gap13TFBScriptInfo8SequenceCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803f9a1c",
+        "set:setIgnoreTimeScalesFromVariant__Q33Gap13TFBScriptInfo8SequenceFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x803f9a30"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 36
+    },
+    "looping": {
+      "accessors": [
+        "set:setLoopingFromVariant__Q33Gap13TFBScriptInfo8SequenceFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x803f99bc",
+        "get:getLoopingToVariant__Q33Gap13TFBScriptInfo8SequenceCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803f99a8"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 36
+    },
+    "overlap": {
+      "accessors": [
+        "set:setOverlapFromVariant__Q33Gap13TFBScriptInfo8SequenceFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x803f99f4",
+        "get:getOverlapToVariant__Q33Gap13TFBScriptInfo8SequenceCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803f99e0"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 36
+    },
+    "playMode": {
+      "accessors": [
+        "set:setPlayModeFromVariant__Q33Gap13TFBScriptInfo8SequenceFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x803fa068",
+        "get:getPlayModeToVariant__Q33Gap13TFBScriptInfo8SequenceCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803fa058"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 40
+    },
+    "playbackPercent": {
+      "accessors": [
+        "set:setPlaybackPercentFromVariant__Q33Gap13TFBScriptInfo8SequenceFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x803fa088",
+        "get:getPlaybackPercentToVariant__Q33Gap13TFBScriptInfo8SequenceCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803fa078"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 44
+    }
+  },
+  "Gap::TFBScriptInfo::SetVariant": {
+    "count": {
+      "accessors": [
+        "get:getCountToVariant__Q33Gap13TFBScriptInfo10SetVariantCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803f766c"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 8
+    },
+    "first": {
+      "accessors": [
+        "get:getFirstToVariant__Q33Gap13TFBScriptInfo10SetVariantCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803f772c"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 8
+    },
+    "last": {
+      "accessors": [
+        "get:getLastToVariant__Q33Gap13TFBScriptInfo10SetVariantCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803f783c"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 8
+    }
+  },
+  "Gap::TFBScriptInfo::System": {
+    "normalizedAngle": {
+      "accessors": [
+        "set:setNormalizedAngleFromVariant__Q33Gap13TFBScriptInfo6SystemFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x803fb034"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 9992
+    },
+    "pauseState": {
+      "accessors": [
+        "set:setPauseStateFromVariant__Q33Gap13TFBScriptInfo6SystemFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x803fae3c"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 240
+    },
+    "scriptTime": {
+      "accessors": [
+        "get:getScriptTimeToVariant__Q33Gap13TFBScriptInfo6SystemCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803fafb8"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 260
+    }
+  },
+  "Gap::TFBScriptInfo::VectorMeasurement": {
+    "horzLen": {
+      "accessors": [
+        "get:getHorzLenToVariant__Q33Gap13TFBScriptInfo17VectorMeasurementCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803ebd90"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": [
+        -1,
+        7
+      ]
+    },
+    "vertDiff": {
+      "accessors": [
+        "set:setVertDiffFromVariant__Q33Gap13TFBScriptInfo17VectorMeasurementFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x803ebd78",
+        "get:getVertDiffToVariant__Q33Gap13TFBScriptInfo17VectorMeasurementCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x803ebd60"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 3
+    }
+  },
+  "Gap::TFBSoundInfo::SoundInfo": {
+    "attenuationDistanceFull": {
+      "accessors": [
+        "get:getAttenuationDistanceFullToVariant__Q33Gap12TFBSoundInfo9SoundInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x804069f8",
+        "set:setAttenuationDistanceFullFromVariant__Q33Gap12TFBSoundInfo9SoundInfoFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x80406a08"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 76
+    },
+    "attenuationDistanceSilent": {
+      "accessors": [
+        "get:getAttenuationDistanceSilentToVariant__Q33Gap12TFBSoundInfo9SoundInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x80406a18",
+        "set:setAttenuationDistanceSilentFromVariant__Q33Gap12TFBSoundInfo9SoundInfoFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x80406a28"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 80
+    },
+    "effectsMasterPitch": {
+      "accessors": [
+        "get:getEffectsMasterPitchToVariant__Q33Gap12TFBSoundInfo9SoundInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x80406a60"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 36
+    },
+    "effectsMasterVolume": {
+      "accessors": [
+        "get:getEffectsMasterVolumeToVariant__Q33Gap12TFBSoundInfo9SoundInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x80406a38"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 32
+    },
+    "effectsSet": {
+      "accessors": [
+        "get:getEffectsSetToVariant__Q33Gap12TFBSoundInfo9SoundInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x80406a88"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 40
+    },
+    "panPercent": {
+      "accessors": [
+        "get:getPanPercentToVariant__Q33Gap12TFBSoundInfo9SoundInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x804069c0",
+        "set:setPanPercentFromVariant__Q33Gap12TFBSoundInfo9SoundInfoFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x804069d0"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 72
+    },
+    "pitchRandomnessPercent": {
+      "accessors": [
+        "get:getPitchRandomnessPercentToVariant__Q33Gap12TFBSoundInfo9SoundInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x80406980",
+        "set:setPitchRandomnessPercentFromVariant__Q33Gap12TFBSoundInfo9SoundInfoFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x80406990"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 68
+    },
+    "rumbleDuration": {
+      "accessors": [
+        "get:getRumbleDurationToVariant__Q33Gap12TFBSoundInfo9SoundInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x804069a0",
+        "set:setRumbleDurationFromVariant__Q33Gap12TFBSoundInfo9SoundInfoFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x804069b0"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 92
+    },
+    "rumblesSet": {
+      "accessors": [
+        "get:getRumblesSetToVariant__Q33Gap12TFBSoundInfo9SoundInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x80406b00"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 56
+    },
+    "streamsMasterPitch": {
+      "accessors": [
+        "get:getStreamsMasterPitchToVariant__Q33Gap12TFBSoundInfo9SoundInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x80406ac4"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 48
+    },
+    "streamsMasterVolume": {
+      "accessors": [
+        "get:getStreamsMasterVolumeToVariant__Q33Gap12TFBSoundInfo9SoundInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x80406a9c"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 44
+    },
+    "streamsSet": {
+      "accessors": [
+        "get:getStreamsSetToVariant__Q33Gap12TFBSoundInfo9SoundInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x80406aec"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 52
+    },
+    "volumePercent": {
+      "accessors": [
+        "get:getVolumePercentToVariant__Q33Gap12TFBSoundInfo9SoundInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x80406940",
+        "set:setVolumePercentFromVariant__Q33Gap12TFBSoundInfo9SoundInfoFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x80406950"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 60
+    },
+    "volumeRandomnessPercent": {
+      "accessors": [
+        "get:getVolumeRandomnessPercentToVariant__Q33Gap12TFBSoundInfo9SoundInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x80406960",
+        "set:setVolumeRandomnessPercentFromVariant__Q33Gap12TFBSoundInfo9SoundInfoFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x80406970"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 64
+    }
+  },
+  "Gap::TFBSpriteInfo::SpriteInfo": {
+    "activeSet": {
+      "accessors": [
+        "get:getActiveSetToVariant__Q33Gap13TFBSpriteInfo10SpriteInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x80408430"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 28
+    },
+    "alignToParent": {
+      "accessors": [
+        "get:getAlignToParentToVariant__Q33Gap13TFBSpriteInfo10SpriteInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x80408498",
+        "set:setAlignToParentFromVariant__Q33Gap13TFBSpriteInfo10SpriteInfoFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x804084a8"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 320
+    },
+    "alignment": {
+      "accessors": [
+        "get:getAlignmentToVariant__Q33Gap13TFBSpriteInfo10SpriteInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x80408478",
+        "set:setAlignmentFromVariant__Q33Gap13TFBSpriteInfo10SpriteInfoFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x80408488"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 276
+    },
+    "depth": {
+      "accessors": [
+        "set:setDepthFromVariant__Q33Gap13TFBSpriteInfo10SpriteInfoFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x804082f4"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 316
+    },
+    "height": {
+      "accessors": [
+        "set:setHeightFromVariant__Q33Gap13TFBSpriteInfo10SpriteInfoFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x80408234"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 272
+    },
+    "numericValue": {
+      "accessors": [
+        "set:setNumericValueFromVariant__Q33Gap13TFBSpriteInfo10SpriteInfoFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x8040875c"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": [
+        304,
+        308
+      ]
+    },
+    "pictureTaking": {
+      "accessors": [
+        "get:getPictureTakingToVariant__Q33Gap13TFBSpriteInfo10SpriteInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8040862c",
+        "set:setPictureTakingFromVariant__Q33Gap13TFBSpriteInfo10SpriteInfoFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x80408640"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 244
+    },
+    "pointSize": {
+      "accessors": [
+        "get:getPointSizeToVariant__Q33Gap13TFBSpriteInfo10SpriteInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x80408858",
+        "set:setPointSizeFromVariant__Q33Gap13TFBSpriteInfo10SpriteInfoFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x80408890"
+      ],
+      "kind": [
+        "int",
+        "mixed"
+      ],
+      "offset": [
+        244,
+        324,
+        24448
+      ]
+    },
+    "priority": {
+      "accessors": [
+        "get:getPriorityToVariant__Q33Gap13TFBSpriteInfo10SpriteInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x804088f4",
+        "set:setPriorityFromVariant__Q33Gap13TFBSpriteInfo10SpriteInfoFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x80408904"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 264
+    },
+    "removedSet": {
+      "accessors": [
+        "get:getRemovedSetToVariant__Q33Gap13TFBSpriteInfo10SpriteInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x80408444"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 32
+    },
+    "spriteAlphaBlend": {
+      "accessors": [
+        "get:getSpriteAlphaBlendToVariant__Q33Gap13TFBSpriteInfo10SpriteInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x80408458",
+        "set:setSpriteAlphaBlendFromVariant__Q33Gap13TFBSpriteInfo10SpriteInfoFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x80408468"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 296
+    },
+    "spriteJustification": {
+      "accessors": [
+        "get:getSpriteJustificationToVariant__Q33Gap13TFBSpriteInfo10SpriteInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x80408674",
+        "set:setSpriteJustificationFromVariant__Q33Gap13TFBSpriteInfo10SpriteInfoFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x80408684"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": [
+        304,
+        312
+      ]
+    },
+    "spriteType": {
+      "accessors": [
+        "get:getSpriteTypeToVariant__Q33Gap13TFBSpriteInfo10SpriteInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x80407f90"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 256
+    },
+    "text": {
+      "accessors": [
+        "get:getTextToVariant__Q33Gap13TFBSpriteInfo10SpriteInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8040878c"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 304
+    },
+    "width": {
+      "accessors": [
+        "set:setWidthFromVariant__Q33Gap13TFBSpriteInfo10SpriteInfoFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x80408174"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 268
+    }
+  },
+  "Gap::TFBViewportInfo::CameraInfo": {
+    "fOV": {
+      "accessors": [
+        "get:getFOVToVariant__Q33Gap15TFBViewportInfo10CameraInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8040c26c",
+        "set:setFOVFromVariant__Q33Gap15TFBViewportInfo10CameraInfoFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x8040c27c"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 84
+    },
+    "lazyCamInfo": {
+      "accessors": [
+        "get:getLazyCamInfoToVariant__Q33Gap15TFBViewportInfo10CameraInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8040c4ec"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 28
+    },
+    "lookAt": {
+      "accessors": [
+        "get:getLookAtToVariant__Q33Gap15TFBViewportInfo10CameraInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8040bd58"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 40
+    },
+    "lookAtHLen": {
+      "accessors": [
+        "get:getLookAtHLenToVariant__Q33Gap15TFBViewportInfo10CameraInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8040bde8",
+        "set:setLookAtHLenFromVariant__Q33Gap15TFBViewportInfo10CameraInfoFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x8040bdf8"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 48
+    },
+    "lookAtHeading": {
+      "accessors": [
+        "get:getLookAtHeadingToVariant__Q33Gap15TFBViewportInfo10CameraInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8040bed0",
+        "set:setLookAtHeadingFromVariant__Q33Gap15TFBViewportInfo10CameraInfoFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x8040bee0"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 52
+    },
+    "lookAtVOffs": {
+      "accessors": [
+        "get:getLookAtVOffsToVariant__Q33Gap15TFBViewportInfo10CameraInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8040be5c",
+        "set:setLookAtVOffsFromVariant__Q33Gap15TFBViewportInfo10CameraInfoFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x8040be6c"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 44
+    },
+    "lookFrom": {
+      "accessors": [
+        "get:getLookFromToVariant__Q33Gap15TFBViewportInfo10CameraInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8040bfd0"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 60
+    },
+    "lookFromHLen": {
+      "accessors": [
+        "get:getLookFromHLenToVariant__Q33Gap15TFBViewportInfo10CameraInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8040c060",
+        "set:setLookFromHLenFromVariant__Q33Gap15TFBViewportInfo10CameraInfoFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x8040c070"
+      ],
+      "kind": [
+        "float",
+        "mixed"
+      ],
+      "offset": [
+        68,
+        92
+      ]
+    },
+    "lookFromHeading": {
+      "accessors": [
+        "get:getLookFromHeadingToVariant__Q33Gap15TFBViewportInfo10CameraInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8040c160",
+        "set:setLookFromHeadingFromVariant__Q33Gap15TFBViewportInfo10CameraInfoFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x8040c170"
+      ],
+      "kind": [
+        "float",
+        "mixed"
+      ],
+      "offset": [
+        72,
+        92
+      ]
+    },
+    "lookFromVOffs": {
+      "accessors": [
+        "get:getLookFromVOffsToVariant__Q33Gap15TFBViewportInfo10CameraInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8040c0e0",
+        "set:setLookFromVOffsFromVariant__Q33Gap15TFBViewportInfo10CameraInfoFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x8040c0f0"
+      ],
+      "kind": [
+        "float",
+        "mixed"
+      ],
+      "offset": [
+        64,
+        92
+      ]
+    },
+    "type": {
+      "accessors": [
+        "get:getTypeToVariant__Q33Gap15TFBViewportInfo10CameraInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8040c36c",
+        "set:setTypeFromVariant__Q33Gap15TFBViewportInfo10CameraInfoFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x8040c37c"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 32
+    },
+    "vertFollowPercent": {
+      "accessors": [
+        "get:getVertFollowPercentToVariant__Q33Gap15TFBViewportInfo10CameraInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8040c3e0",
+        "set:setVertFollowPercentFromVariant__Q33Gap15TFBViewportInfo10CameraInfoFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x8040c3f0"
+      ],
+      "kind": [
+        "float",
+        "mixed"
+      ],
+      "offset": [
+        80,
+        92
+      ]
+    }
+  },
+  "Gap::TFBViewportInfo::LazyCamInfo": {
+    "angularAcc": {
+      "accessors": [
+        "get:getAngularAccToVariant__Q33Gap15TFBViewportInfo11LazyCamInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8040b8e8",
+        "set:setAngularAccFromVariant__Q33Gap15TFBViewportInfo11LazyCamInfoFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x8040b8f8"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 36
+    },
+    "angularDec": {
+      "accessors": [
+        "get:getAngularDecToVariant__Q33Gap15TFBViewportInfo11LazyCamInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8040b908",
+        "set:setAngularDecFromVariant__Q33Gap15TFBViewportInfo11LazyCamInfoFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x8040b918"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 40
+    },
+    "angularVAcc": {
+      "accessors": [
+        "get:getAngularVAccToVariant__Q33Gap15TFBViewportInfo11LazyCamInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8040bb88",
+        "set:setAngularVAccFromVariant__Q33Gap15TFBViewportInfo11LazyCamInfoFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x8040bb98"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 48
+    },
+    "angularVDec": {
+      "accessors": [
+        "get:getAngularVDecToVariant__Q33Gap15TFBViewportInfo11LazyCamInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8040bba8",
+        "set:setAngularVDecFromVariant__Q33Gap15TFBViewportInfo11LazyCamInfoFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x8040bbb8"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 52
+    },
+    "cameraJoystick": {
+      "accessors": [
+        "get:getCameraJoystickToVariant__Q33Gap15TFBViewportInfo11LazyCamInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8040bce0",
+        "set:setCameraJoystickFromVariant__Q33Gap15TFBViewportInfo11LazyCamInfoFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x8040bcf0"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 144
+    },
+    "lengthMinus": {
+      "accessors": [
+        "get:getLengthMinusToVariant__Q33Gap15TFBViewportInfo11LazyCamInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8040ba68",
+        "set:setLengthMinusFromVariant__Q33Gap15TFBViewportInfo11LazyCamInfoFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x8040ba78"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 108
+    },
+    "lengthPlus": {
+      "accessors": [
+        "get:getLengthPlusToVariant__Q33Gap15TFBViewportInfo11LazyCamInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8040ba48",
+        "set:setLengthPlusFromVariant__Q33Gap15TFBViewportInfo11LazyCamInfoFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x8040ba58"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 112
+    },
+    "linearAcc": {
+      "accessors": [
+        "get:getLinearAccToVariant__Q33Gap15TFBViewportInfo11LazyCamInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8040b948",
+        "set:setLinearAccFromVariant__Q33Gap15TFBViewportInfo11LazyCamInfoFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x8040b958"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 60
+    },
+    "linearDec": {
+      "accessors": [
+        "get:getLinearDecToVariant__Q33Gap15TFBViewportInfo11LazyCamInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8040b968",
+        "set:setLinearDecFromVariant__Q33Gap15TFBViewportInfo11LazyCamInfoFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x8040b978"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 64
+    },
+    "linearVertAcc": {
+      "accessors": [
+        "get:getLinearVertAccToVariant__Q33Gap15TFBViewportInfo11LazyCamInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8040baa8",
+        "set:setLinearVertAccFromVariant__Q33Gap15TFBViewportInfo11LazyCamInfoFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x8040bab8"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 72
+    },
+    "linearVertDec": {
+      "accessors": [
+        "get:getLinearVertDecToVariant__Q33Gap15TFBViewportInfo11LazyCamInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8040bac8",
+        "set:setLinearVertDecFromVariant__Q33Gap15TFBViewportInfo11LazyCamInfoFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x8040bad8"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 76
+    },
+    "lookAngularAcc": {
+      "accessors": [
+        "get:getLookAngularAccToVariant__Q33Gap15TFBViewportInfo11LazyCamInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8040ba08",
+        "set:setLookAngularAccFromVariant__Q33Gap15TFBViewportInfo11LazyCamInfoFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x8040ba18"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 128
+    },
+    "lookAngularDec": {
+      "accessors": [
+        "get:getLookAngularDecToVariant__Q33Gap15TFBViewportInfo11LazyCamInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8040ba28",
+        "set:setLookAngularDecFromVariant__Q33Gap15TFBViewportInfo11LazyCamInfoFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x8040ba38"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 132
+    },
+    "lookMaxAngularV": {
+      "accessors": [
+        "get:getLookMaxAngularVToVariant__Q33Gap15TFBViewportInfo11LazyCamInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8040b9e8",
+        "set:setLookMaxAngularVFromVariant__Q33Gap15TFBViewportInfo11LazyCamInfoFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x8040b9f8"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 124
+    },
+    "maxAngularV": {
+      "accessors": [
+        "get:getMaxAngularVToVariant__Q33Gap15TFBViewportInfo11LazyCamInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8040b8c8",
+        "set:setMaxAngularVFromVariant__Q33Gap15TFBViewportInfo11LazyCamInfoFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x8040b8d8"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 32
+    },
+    "maxAngularVVel": {
+      "accessors": [
+        "get:getMaxAngularVVelToVariant__Q33Gap15TFBViewportInfo11LazyCamInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8040bb68",
+        "set:setMaxAngularVVelFromVariant__Q33Gap15TFBViewportInfo11LazyCamInfoFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x8040bb78"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 44
+    },
+    "maxLinearV": {
+      "accessors": [
+        "get:getMaxLinearVToVariant__Q33Gap15TFBViewportInfo11LazyCamInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8040b928",
+        "set:setMaxLinearVFromVariant__Q33Gap15TFBViewportInfo11LazyCamInfoFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x8040b938"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 56
+    },
+    "maxLinearVel4MaxAngVel": {
+      "accessors": [
+        "get:getMaxLinearVel4MaxAngVelToVariant__Q33Gap15TFBViewportInfo11LazyCamInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8040bb48",
+        "set:setMaxLinearVel4MaxAngVelFromVariant__Q33Gap15TFBViewportInfo11LazyCamInfoFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x8040bb58"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 104
+    },
+    "maxLinearVertV": {
+      "accessors": [
+        "get:getMaxLinearVertVToVariant__Q33Gap15TFBViewportInfo11LazyCamInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8040ba88",
+        "set:setMaxLinearVertVFromVariant__Q33Gap15TFBViewportInfo11LazyCamInfoFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x8040ba98"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 68
+    },
+    "maxVertAngle": {
+      "accessors": [
+        "get:getMaxVertAngleToVariant__Q33Gap15TFBViewportInfo11LazyCamInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8040b9a8",
+        "set:setMaxVertAngleFromVariant__Q33Gap15TFBViewportInfo11LazyCamInfoFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x8040b9b8"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 84
+    },
+    "minLength": {
+      "accessors": [
+        "get:getMinLengthToVariant__Q33Gap15TFBViewportInfo11LazyCamInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8040b9c8",
+        "set:setMinLengthFromVariant__Q33Gap15TFBViewportInfo11LazyCamInfoFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x8040b9d8"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 88
+    },
+    "minVertAngle": {
+      "accessors": [
+        "get:getMinVertAngleToVariant__Q33Gap15TFBViewportInfo11LazyCamInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8040b988",
+        "set:setMinVertAngleFromVariant__Q33Gap15TFBViewportInfo11LazyCamInfoFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x8040b998"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 80
+    },
+    "targetLinearAcc": {
+      "accessors": [
+        "get:getTargetLinearAccToVariant__Q33Gap15TFBViewportInfo11LazyCamInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8040bb08",
+        "set:setTargetLinearAccFromVariant__Q33Gap15TFBViewportInfo11LazyCamInfoFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x8040bb18"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 96
+    },
+    "targetLinearDec": {
+      "accessors": [
+        "get:getTargetLinearDecToVariant__Q33Gap15TFBViewportInfo11LazyCamInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8040bb28",
+        "set:setTargetLinearDecFromVariant__Q33Gap15TFBViewportInfo11LazyCamInfoFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x8040bb38"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 100
+    },
+    "targetMaxLinearV": {
+      "accessors": [
+        "get:getTargetMaxLinearVToVariant__Q33Gap15TFBViewportInfo11LazyCamInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8040bae8",
+        "set:setTargetMaxLinearVFromVariant__Q33Gap15TFBViewportInfo11LazyCamInfoFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x8040baf8"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 92
+    }
+  },
+  "Gap::TFBViewportInfo::ViewConverter": {
+    "lockType": {
+      "accessors": [
+        "set:setLockTypeFromVariant__Q33Gap15TFBViewportInfo13ViewConverterFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x804332f4",
+        "get:getLockTypeToVariant__Q33Gap15TFBViewportInfo13ViewConverterCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x804332e4"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 36
+    }
+  },
+  "Gap::TFBViewportInfo::ViewportBlurEffectInfo": {
+    "blurLevel": {
+      "accessors": [
+        "set:setBlurLevelFromVariant__Q33Gap15TFBViewportInfo22ViewportBlurEffectInfoFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x8040adf8",
+        "get:getBlurLevelToVariant__Q33Gap15TFBViewportInfo22ViewportBlurEffectInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8040ade8"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 36
+    },
+    "blurType": {
+      "accessors": [
+        "set:setBlurTypeFromVariant__Q33Gap15TFBViewportInfo22ViewportBlurEffectInfoFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x8040ae18",
+        "get:getBlurTypeToVariant__Q33Gap15TFBViewportInfo22ViewportBlurEffectInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8040ae08"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 32
+    }
+  },
+  "Gap::TFBViewportInfo::ViewportDepthOfFieldEffectInfo": {
+    "effectLevel": {
+      "accessors": [
+        "set:setEffectLevelFromVariant__Q33Gap15TFBViewportInfo30ViewportDepthOfFieldEffectInfoFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x8040ae70",
+        "get:getEffectLevelToVariant__Q33Gap15TFBViewportInfo30ViewportDepthOfFieldEffectInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8040ae60"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 36
+    },
+    "focusDistance": {
+      "accessors": [
+        "set:setFocusDistanceFromVariant__Q33Gap15TFBViewportInfo30ViewportDepthOfFieldEffectInfoFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x8040ae90",
+        "get:getFocusDistanceToVariant__Q33Gap15TFBViewportInfo30ViewportDepthOfFieldEffectInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8040ae80"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 40
+    },
+    "focusDropFar": {
+      "accessors": [
+        "set:setFocusDropFarFromVariant__Q33Gap15TFBViewportInfo30ViewportDepthOfFieldEffectInfoFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x8040aed0",
+        "get:getFocusDropFarToVariant__Q33Gap15TFBViewportInfo30ViewportDepthOfFieldEffectInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8040aec0"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 52
+    },
+    "focusDropNear": {
+      "accessors": [
+        "set:setFocusDropNearFromVariant__Q33Gap15TFBViewportInfo30ViewportDepthOfFieldEffectInfoFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x8040aeb0",
+        "get:getFocusDropNearToVariant__Q33Gap15TFBViewportInfo30ViewportDepthOfFieldEffectInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8040aea0"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 48
+    },
+    "focusWidth": {
+      "accessors": [
+        "set:setFocusWidthFromVariant__Q33Gap15TFBViewportInfo30ViewportDepthOfFieldEffectInfoFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x8040aef0",
+        "get:getFocusWidthToVariant__Q33Gap15TFBViewportInfo30ViewportDepthOfFieldEffectInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8040aee0"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 44
+    }
+  },
+  "Gap::TFBViewportInfo::ViewportFadeEffectInfo": {
+    "fadeLevel": {
+      "accessors": [
+        "set:setFadeLevelFromVariant__Q33Gap15TFBViewportInfo22ViewportFadeEffectInfoFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x8040add8",
+        "get:getFadeLevelToVariant__Q33Gap15TFBViewportInfo22ViewportFadeEffectInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8040adc8"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 36
+    }
+  },
+  "Gap::TFBViewportInfo::ViewportFogEffectInfo": {
+    "causticMoveX": {
+      "accessors": [
+        "get:getCausticMoveXToVariant__Q33Gap15TFBViewportInfo21ViewportFogEffectInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8040b0f4",
+        "set:setCausticMoveXFromVariant__Q33Gap15TFBViewportInfo21ViewportFogEffectInfoFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x8040b104"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 92
+    },
+    "causticMoveY": {
+      "accessors": [
+        "get:getCausticMoveYToVariant__Q33Gap15TFBViewportInfo21ViewportFogEffectInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8040b114",
+        "set:setCausticMoveYFromVariant__Q33Gap15TFBViewportInfo21ViewportFogEffectInfoFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x8040b124"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 96
+    },
+    "causticScale": {
+      "accessors": [
+        "get:getCausticScaleToVariant__Q33Gap15TFBViewportInfo21ViewportFogEffectInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8040b058",
+        "set:setCausticScaleFromVariant__Q33Gap15TFBViewportInfo21ViewportFogEffectInfoFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x8040b068"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 76
+    },
+    "causticScaleSkin": {
+      "accessors": [
+        "get:getCausticScaleSkinToVariant__Q33Gap15TFBViewportInfo21ViewportFogEffectInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8040b078",
+        "set:setCausticScaleSkinFromVariant__Q33Gap15TFBViewportInfo21ViewportFogEffectInfoFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x8040b088"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 80
+    },
+    "causticSpeed": {
+      "accessors": [
+        "get:getCausticSpeedToVariant__Q33Gap15TFBViewportInfo21ViewportFogEffectInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8040b0d4",
+        "set:setCausticSpeedFromVariant__Q33Gap15TFBViewportInfo21ViewportFogEffectInfoFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x8040b0e4"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 88
+    },
+    "fogFarDistance": {
+      "accessors": [
+        "get:getFogFarDistanceToVariant__Q33Gap15TFBViewportInfo21ViewportFogEffectInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8040af64",
+        "set:setFogFarDistanceFromVariant__Q33Gap15TFBViewportInfo21ViewportFogEffectInfoFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x8040af74"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 52
+    },
+    "fogMax": {
+      "accessors": [
+        "get:getFogMaxToVariant__Q33Gap15TFBViewportInfo21ViewportFogEffectInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8040afa4",
+        "set:setFogMaxFromVariant__Q33Gap15TFBViewportInfo21ViewportFogEffectInfoFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x8040afb4"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 60
+    },
+    "fogMin": {
+      "accessors": [
+        "get:getFogMinToVariant__Q33Gap15TFBViewportInfo21ViewportFogEffectInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8040af84",
+        "set:setFogMinFromVariant__Q33Gap15TFBViewportInfo21ViewportFogEffectInfoFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x8040af94"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 56
+    },
+    "fogNearDistance": {
+      "accessors": [
+        "get:getFogNearDistanceToVariant__Q33Gap15TFBViewportInfo21ViewportFogEffectInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8040af44",
+        "set:setFogNearDistanceFromVariant__Q33Gap15TFBViewportInfo21ViewportFogEffectInfoFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x8040af54"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 48
+    },
+    "fogSkyDome": {
+      "accessors": [
+        "get:getFogSkyDomeToVariant__Q33Gap15TFBViewportInfo21ViewportFogEffectInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8040afc4",
+        "set:setFogSkyDomeFromVariant__Q33Gap15TFBViewportInfo21ViewportFogEffectInfoFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x8040afd4"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 68
+    }
+  },
+  "Gap::TFBViewportInfo::ViewportInfo": {
+    "blurEffect": {
+      "accessors": [
+        "get:getBlurEffectToVariant__Q33Gap15TFBViewportInfo12ViewportInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8040b274"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 264
+    },
+    "camera": {
+      "accessors": [
+        "get:getCameraToVariant__Q33Gap15TFBViewportInfo12ViewportInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8040b2fc"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 248
+    },
+    "defaultViewport": {
+      "accessors": [
+        "get:getDefaultViewportToVariant__Q33Gap15TFBViewportInfo12ViewportInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8040b458"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 28
+    },
+    "depthOfFieldEffect": {
+      "accessors": [
+        "get:getDepthOfFieldEffectToVariant__Q33Gap15TFBViewportInfo12ViewportInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8040b294"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 272
+    },
+    "fOV": {
+      "accessors": [
+        "get:getFOVToVariant__Q33Gap15TFBViewportInfo12ViewportInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8040b384",
+        "set:setFOVFromVariant__Q33Gap15TFBViewportInfo12ViewportInfoFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x8040b394"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 252
+    },
+    "fadeEffect": {
+      "accessors": [
+        "get:getFadeEffectToVariant__Q33Gap15TFBViewportInfo12ViewportInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8040b264"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 260
+    },
+    "farClip": {
+      "accessors": [
+        "get:getFarClipToVariant__Q33Gap15TFBViewportInfo12ViewportInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8040b3a4",
+        "set:setFarClipFromVariant__Q33Gap15TFBViewportInfo12ViewportInfoFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x8040b3b4"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 276
+    },
+    "fogEffect": {
+      "accessors": [
+        "get:getFogEffectToVariant__Q33Gap15TFBViewportInfo12ViewportInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8040b284"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 268
+    },
+    "frameLogicLoad": {
+      "accessors": [
+        "get:getFrameLogicLoadToVariant__Q33Gap15TFBViewportInfo12ViewportInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8040b46c"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 72
+    },
+    "frameRenderLoad": {
+      "accessors": [
+        "get:getFrameRenderLoadToVariant__Q33Gap15TFBViewportInfo12ViewportInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8040b4bc"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 80
+    },
+    "frameTraversalLoad": {
+      "accessors": [
+        "get:getFrameTraversalLoadToVariant__Q33Gap15TFBViewportInfo12ViewportInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8040b4a0"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 76
+    },
+    "lODShiftScale": {
+      "accessors": [
+        "get:getLODShiftScaleToVariant__Q33Gap15TFBViewportInfo12ViewportInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8040b6f0",
+        "set:setLODShiftScaleFromVariant__Q33Gap15TFBViewportInfo12ViewportInfoFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x8040b700"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 288
+    },
+    "proceduralAlphaToggle": {
+      "accessors": [
+        "get:getProceduralAlphaToggleToVariant__Q33Gap15TFBViewportInfo12ViewportInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8040b410",
+        "set:setProceduralAlphaToggleFromVariant__Q33Gap15TFBViewportInfo12ViewportInfoFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x8040b428"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 236
+    },
+    "spriteWorld": {
+      "accessors": [
+        "get:getSpriteWorldToVariant__Q33Gap15TFBViewportInfo12ViewportInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8040b338"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 296
+    },
+    "titleSafe": {
+      "accessors": [
+        "get:getTitleSafeToVariant__Q33Gap15TFBViewportInfo12ViewportInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8040b2a4"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 244
+    },
+    "transitionTime": {
+      "accessors": [
+        "get:getTransitionTimeToVariant__Q33Gap15TFBViewportInfo12ViewportInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8040b3f0",
+        "set:setTransitionTimeFromVariant__Q33Gap15TFBViewportInfo12ViewportInfoFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x8040b400"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 284
+    },
+    "viewConverter": {
+      "accessors": [
+        "get:getViewConverterToVariant__Q33Gap15TFBViewportInfo12ViewportInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8040b6e0"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 292
+    }
+  },
+  "Gap::TFBViewportInfo::ViewportTitleSafeInfo": {
+    "titleSafeLeft": {
+      "accessors": [
+        "get:getTitleSafeLeftToVariant__Q33Gap15TFBViewportInfo21ViewportTitleSafeInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8040b774"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 32
+    },
+    "titleSafeLower": {
+      "accessors": [
+        "get:getTitleSafeLowerToVariant__Q33Gap15TFBViewportInfo21ViewportTitleSafeInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8040b7a4"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 44
+    },
+    "titleSafeRight": {
+      "accessors": [
+        "get:getTitleSafeRightToVariant__Q33Gap15TFBViewportInfo21ViewportTitleSafeInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8040b784"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 36
+    },
+    "titleSafeUpper": {
+      "accessors": [
+        "get:getTitleSafeUpperToVariant__Q33Gap15TFBViewportInfo21ViewportTitleSafeInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8040b794"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 40
+    }
+  },
+  "Gap::TFBanimalChessInfo::animalChessInfo": {
+    "depth": {
+      "accessors": [
+        "set:setDepthFromVariant__Q33Gap18TFBanimalChessInfo15animalChessInfoFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x8000d638",
+        "get:getDepthToVariant__Q33Gap18TFBanimalChessInfo15animalChessInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8000d628"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 40
+    },
+    "info": {
+      "accessors": [
+        "set:setInfoFromVariant__Q33Gap18TFBanimalChessInfo15animalChessInfoFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x8000d618",
+        "get:getInfoToVariant__Q33Gap18TFBanimalChessInfo15animalChessInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8000d608"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 36
+    },
+    "state": {
+      "accessors": [
+        "set:setStateFromVariant__Q33Gap18TFBanimalChessInfo15animalChessInfoFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x8000d5f8",
+        "get:getStateToVariant__Q33Gap18TFBanimalChessInfo15animalChessInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8000d5e8"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 32
+    },
+    "time": {
+      "accessors": [
+        "set:setTimeFromVariant__Q33Gap18TFBanimalChessInfo15animalChessInfoFRCQ33Gap13TFBScriptInfo13ScriptVariant@0x8000d658",
+        "get:getTimeToVariant__Q33Gap18TFBanimalChessInfo15animalChessInfoCFRQ33Gap13TFBScriptInfo13ScriptVariant@0x8000d648"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 44
+    }
+  }
+}

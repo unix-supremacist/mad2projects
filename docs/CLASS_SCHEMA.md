@@ -105,12 +105,24 @@ d      = sign_extend16(word & 0xFFFF)   # the offset we want, when rA == 3 (r3/t
 Run: `python3 extract_schema.py wii_field_schema.json` (paths are hardcoded
 to the files alongside it in `wii_demo_ref/`).
 
-**Current result**: 54 classes, several hundred fields, with byte-exact
+**Current result**: 50 classes, several hundred fields, with byte-exact
 offsets and int-vs-float kind. Verified against independent manual
 decompilation in Ghidra for `GeneratorGenerationFields` (every one of its 7
 fields matched exactly: `spawnRate`=0x20, `maxAlive`=0x24,
 `currentlyAlive`=0x28, `lifespan`=0x2C, `lifespanRandomness`=0x30,
 `maxDistance`=0x34, `midpointPercent`=0x38).
+
+**Found and fixed a real bug in the extractor**: offset `0` was showing up
+for ~20 fields across several classes (e.g. `ActorInfo.velocity`,
+`ScriptObject.its`/`.null`). Offset 0 is *always* the classIdx/vtable slot on
+every object — never a legitimate field — so every one of those entries was
+the script decoding the wrong instruction (most likely a thunk/stub that
+loads something other than `this` into `r3` before the real body, or a
+tail-call trampoline). Fixed by dropping any `d == 0` match in
+`extract_schema.py`; the class count dropped slightly (54 → 50) because a
+few classes had *only* spurious offset-0 fields and are now correctly
+reported as having no confidently-known fields at all, rather than one wrong
+one.
 
 **Known coverage gap**: this only catches fields with the `ToVariant`/
 `FromVariant` script-exposed accessor convention. Plenty of fields
@@ -172,9 +184,81 @@ argument yet for eventually replacing `level.go`'s heuristic scanner with a
 real object-graph walker once `IGZ_FORMAT.md`'s Section 1 layout is nailed
 down further.
 
+## A real object-graph walker (`mad2iga/objgraph.go`)
+
+That last point above turned into its own piece of work: `mad2iga` now has a
+second, non-heuristic way to enumerate objects in a `level.bld`, alongside
+`level.go`'s coordinate scanner (which is left as-is — it's still useful for
+what it does, and per direct user feedback its instance-*naming* logic has a
+long history of getting worse every time someone's tried to fix it, so it's
+not worth re-litigating). `ParseObjectGraph`/`ObjectGraph` in
+`mad2iga/objgraph.go` instead:
+
+1. Parses the section table generically (contiguous `{offset,size,align,flags}`
+   descriptors starting at `0x10`, stopping at the first non-contiguous or
+   all-zero entry) instead of hardcoding two sections — this is the same
+   parse `IGZ_FORMAT.md` documents, just generalized to all N sections
+   instead of assuming only sections 0 and 1 matter.
+2. Reads Section 1's top-level `igObjectList` header for real
+   (`objectCount`@+0x0C, `objArrayOff`@+0x18, then that many Section-1-relative
+   pointers) — `TopLevelObjects()`.
+3. Resolves segmented pointers properly (`ResolveSegPointer`, `segID` in the
+   top byte indexing directly into the section table, per `IGZ_FORMAT.md`).
+4. Walks `igGroup.childList` (`+0x1C`, manually decompiled and confirmed via
+   `Gap::Sg::igGroup::getChildCount`/`hasChildren`, both of which read
+   `*(int*)(this+0x1C)`) through the generic `igObjectList`-shaped container
+   layout (`count`@+8, `capacity`@+0xC, `data`@+0x14 — confirmed via
+   decompiling `igObjectList::getCount`/`append`/`set`) — `WalkGroupChildren`.
+5. `FullWalk()` combines 2-4 into one pass: every object reachable from the
+   top-level list, plus everything recursively reachable by following
+   `igGroup` children, deduplicated by address.
+
+**This directly contradicts the older research notes' assumption** that
+gameplay objects are never top-level: cross-checked against `level.go`'s
+older coordinate-scan heuristic (by confirming both methods find the same
+real `ActorInfo` addresses, including genuine level-authored instances like
+`Coin_LandCroc_B_1`) and confirmed `ActorInfo` objects genuinely do appear
+directly in the top-level list, not exclusively nested in the scene graph.
+
+**Wired up**: `mad2repack objects-dump <level.bld> <out.json>` runs
+`FullWalk()` and, for every object whose class has a known schema (see
+`ClassSchema()` in `schema.go`, which embeds `wii_field_schema.json` directly
+into the `mad2iga` binary via `go:embed`), reads out every known field's raw
+value. Run against `WaterholeBLD/level.bld.orig`: 11 sections, 170 classes,
+**1,802 objects reached** across 12 distinct classes (`ActorInfo` ×529,
+`SoundInfo` ×438, `ScriptSet` ×365, `ScriptInfo` ×135, `StringInfo` ×108,
+`SpriteInfo` ×90, `ValueInfo` ×59, `ParticleInfo` ×53, `CameraInfo` ×15,
+`DirectionalLightInfo` ×7, `PlacementReference` ×2, `TFBWorldInfo` ×1).
+
+**Open, not-yet-explained observation**: every `ActorInfo`'s `activeSet`/
+`playerSet`/`inactiveSet`/`removedSet`/`controller`/`physicsParameters`/
+`vehicleParameters`/`collisionInfo` fields read back as **exactly the same
+raw value across all 529 instances** in Waterhole. Plausible explanation,
+not yet confirmed: these look like membership-list/shared-resource pointer
+fields (an actor being in the "active set" vs "removed set", or sharing one
+default `physicsParameters`/`collisionInfo` object) that the engine patches
+in at load/fixup time rather than genuinely varying per level-authored
+instance — consistent with IGZ's overall "frozen memory image + fixups"
+design (`IGZ_FORMAT.md`). Not chased further this session; worth confirming
+by checking whether these fields' at-rest values resolve (via
+`ResolveSegPointer`) to valid, in-bounds objects, and if so what class those
+objects are.
+
+**Known gaps** (same shape as the schema's own gaps above): `FullWalk` only
+follows one edge type (`igGroup.childList`). Other container/reference
+fields — e.g. `GeneratorInfoList.generatorInfoList`, `igSceneInfo`'s own
+children — aren't followed yet, so objects *only* reachable that way (like
+real `GeneratorInfo` instances, per the discussion above) are still missed.
+Extending `FullWalk` to follow additional known pointer/list fields as
+they're identified (the same way `igGroup.childList` was) is the natural
+next increment, rather than a wholesale rewrite — the container-reading
+primitives (`ReadObjectListContainer`, `ResolveSegPointer`) are already
+generic enough to reuse for any other class's list field once its offset is
+known.
+
 ## Files
 
-All in `../../mad2assetextractor/wii_demo_ref/`:
+Reference material, all in `../../mad2assetextractor/wii_demo_ref/`:
 
 - `Mad2.elf` — the unstripped Wii demo binary (~13 MB).
 - `Mad2.elf.symbols.txt` — `readelf -sW` dump (~5 MB, 63,334 symbols).
@@ -184,3 +268,18 @@ All in `../../mad2assetextractor/wii_demo_ref/`:
 A Ghidra project (`mad2`, via the `ghidra-mcp` bridge) already has both
 `igCore.dll` (PC) and `Mad2.elf` (Wii) imported and analyzed, for anyone
 continuing this interactively rather than via the standalone script.
+
+Consuming code, in `mad2iga/` (this repo):
+
+- `schema.go` — embeds a copy of `wii_field_schema.json` directly into the
+  `mad2iga` Go package via `go:embed` (kept in sync manually — if you
+  regenerate the JSON in `wii_demo_ref/`, copy it over
+  `mad2iga/wii_field_schema.json` too) and exposes `ClassSchema(bareName)`/
+  `FieldInfo.FieldOffset()` for looking up a class's known fields by the
+  bare name it has in an IGZ file's own Section 0 class directory (no
+  namespace prefix — that information isn't present in the file itself).
+- `objgraph.go` — the real Section 1 object-graph walker described above
+  (`ParseObjectGraph`, `ObjectGraph.FullWalk`, `WalkGroupChildren`,
+  `ResolveSegPointer`, `FieldValue`, etc.).
+- `../mad2repack/objects.go` — the `objects-dump` CLI command wiring the
+  above into a JSON dump (class histogram + per-object known-field values).
