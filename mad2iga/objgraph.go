@@ -35,6 +35,16 @@ type ObjectRef struct {
 	ClassName string // "" if ClassIdx is out of range of ClassNames
 }
 
+// PointerFieldValue is what a schema field marked Kind "ptr" resolves to:
+// the raw at-rest value plus, if it resolved to a real in-bounds object, the
+// target's address and class name.
+type PointerFieldValue struct {
+	Raw          uint32 `json:"raw"`
+	ResolvedAddr uint32 `json:"resolved_addr,omitempty"`
+	TargetClass  string `json:"target_class,omitempty"`
+	Resolved     bool   `json:"resolved"`
+}
+
 // ParseObjectGraph reads an IGZ file's section table and Section 0 class
 // directory. It does not touch the string pool or Section 1's contents —
 // use the ObjectGraph methods below for that.
@@ -131,10 +141,34 @@ func (g *ObjectGraph) ClassNameOf(classIdx int) string {
 
 // ResolveSegPointer turns an at-rest segmented pointer (segID in the top
 // byte, offset in the low 24 bits — see ../docs/IGZ_FORMAT.md) into an
-// absolute file offset. segID indexes directly into Sections (not segID-1).
+// absolute file offset.
+//
+// segID == 0 is a special case, confirmed by directly cross-checking three
+// of ActorInfo's real pointer fields (collisionInfo/waypoints/
+// physicsParameters — see docs/CLASS_SCHEMA.md's "PC-verified fields")
+// against a real level.bld: it does NOT mean literal Section 0. It means
+// "relative to whatever section the pointer itself lives in" — for every
+// ordinary object-to-object reference within the main object graph, that's
+// Section 1, the same base TopLevelObjects() uses for the top-level object
+// array's own pointers. (segID == 0 landing on Section 1 by coincidence
+// here, rather than requiring the pointer's own containing section to be
+// tracked explicitly, is a simplification that holds because every object
+// this walker currently visits — via TopLevelObjects/WalkGroupChildren —
+// lives in Section 1; it would need generalizing if a future edge is added
+// that visits objects living in some other section.)
+//
+// segID >= 1 is left as a direct section-table index, per
+// mad2assetextractor/docs/demo.md's separate (never independently
+// re-verified this session) observations about cross-file segment
+// references — e.g. "0x05XXXXXX for Segment 5/global Segment 1" when a
+// level references global.bld. Not re-confirmed here; flagged in case it
+// turns out to need the same kind of correction segID==0 just got.
 func (g *ObjectGraph) ResolveSegPointer(ptr uint32) (uint32, bool) {
 	segID := ptr >> 24
 	offset := ptr & 0x00FFFFFF
+	if segID == 0 {
+		return g.Sec1Off + offset, true
+	}
 	if int(segID) >= len(g.Sections) {
 		return 0, false
 	}
@@ -359,16 +393,63 @@ func (g *ObjectGraph) FieldValue(obj ObjectRef, fieldName string) (interface{}, 
 	if !ok {
 		return nil, false
 	}
-	fieldOff, ok := info.FieldOffset()
-	if !ok {
-		return nil, false
-	}
-	addr := obj.Addr + uint32(fieldOff)
 	isFloat := len(info.Kind) == 1 && info.Kind[0] == "float"
-	if isFloat {
-		v, ok := g.ReadFloat32(addr)
+	isMatrix := len(info.Kind) == 1 && info.Kind[0] == "matrix44f"
+	isPtr := len(info.Kind) == 1 && info.Kind[0] == "ptr"
+
+	if fieldOff, ok := info.FieldOffset(); ok {
+		addr := obj.Addr + uint32(fieldOff)
+		if isPtr {
+			raw, ok := g.ReadUint32(addr)
+			if !ok {
+				return nil, false
+			}
+			pf := PointerFieldValue{Raw: raw}
+			if raw != 0 {
+				if resolvedAddr, ok := g.ResolveSegPointer(raw); ok {
+					if target, ok := g.ObjectAt(resolvedAddr); ok {
+						pf.ResolvedAddr = resolvedAddr
+						pf.TargetClass = target.ClassName
+						pf.Resolved = true
+					}
+				}
+			}
+			return pf, true
+		}
+		if isMatrix {
+			// A full 4x4 float matrix (16 floats, 64 bytes) — returned
+			// whole rather than guessing which row/offset is the
+			// translation, since that hasn't been independently confirmed
+			// yet (see pcVerifiedFields's ActorInfo.logicMatrix comment).
+			var m [16]float32
+			for i := range m {
+				v, ok := g.ReadFloat32(addr + uint32(i*4))
+				if !ok {
+					return nil, false
+				}
+				m[i] = v
+			}
+			return m, true
+		}
+		if isFloat {
+			v, ok := g.ReadFloat32(addr)
+			return v, ok
+		}
+		v, ok := g.ReadUint32(addr)
 		return v, ok
 	}
-	v, ok := g.ReadUint32(addr)
-	return v, ok
+
+	// Not a single unambiguous offset — check whether it's a Vec3f instead
+	// (see FieldInfo.Vec3Offset's doc comment).
+	if isFloat {
+		if base, stride, ok := info.Vec3Offset(); ok {
+			x, okX := g.ReadFloat32(obj.Addr + uint32(base))
+			y, okY := g.ReadFloat32(obj.Addr + uint32(base+stride))
+			z, okZ := g.ReadFloat32(obj.Addr + uint32(base+2*stride))
+			if okX && okY && okZ {
+				return [3]float32{x, y, z}, true
+			}
+		}
+	}
+	return nil, false
 }

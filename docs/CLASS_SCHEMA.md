@@ -230,19 +230,53 @@ value. Run against `WaterholeBLD/level.bld.orig`: 11 sections, 170 classes,
 `SpriteInfo` ×90, `ValueInfo` ×59, `ParticleInfo` ×53, `CameraInfo` ×15,
 `DirectionalLightInfo` ×7, `PlacementReference` ×2, `TFBWorldInfo` ×1).
 
-**Open, not-yet-explained observation**: every `ActorInfo`'s `activeSet`/
-`playerSet`/`inactiveSet`/`removedSet`/`controller`/`physicsParameters`/
-`vehicleParameters`/`collisionInfo` fields read back as **exactly the same
-raw value across all 529 instances** in Waterhole. Plausible explanation,
-not yet confirmed: these look like membership-list/shared-resource pointer
-fields (an actor being in the "active set" vs "removed set", or sharing one
-default `physicsParameters`/`collisionInfo` object) that the engine patches
-in at load/fixup time rather than genuinely varying per level-authored
-instance — consistent with IGZ's overall "frozen memory image + fixups"
-design (`IGZ_FORMAT.md`). Not chased further this session; worth confirming
-by checking whether these fields' at-rest values resolve (via
-`ResolveSegPointer`) to valid, in-bounds objects, and if so what class those
-objects are.
+**⚠️ Major caveat, found via direct disproof — the Wii schema's offsets are
+NOT guaranteed to carry over to the PC build.** The observation above (every
+`ActorInfo`'s `activeSet`/`playerSet`/`inactiveSet`/`removedSet`/`controller`/
+`physicsParameters`/`vehicleParameters`/`collisionInfo` reading back identical
+across all 529 Waterhole instances) first looked like it might mean something
+(shared/singleton list-membership pointers). It doesn't — it means those
+offsets are simply **wrong for the PC binary**. Proof: `ActorInfo`'s
+`destination` field (a Vec3f, schema offset `[320, 324, 328]`) was checked
+against a known-good reference — `mad2iga/level.go`'s independently, PC-file-
+verified offset of `+80` for `ActorInfo`'s real transform translation (this
+offset was never derived from the Wii ELF; it comes from the original,
+separate PC-native byte-pattern-matching approach in `research_notes.md`).
+At `+80`, the PC file holds sane world coordinates
+(`69.26, 6.37, -59.89` for one real instance). At the Wii schema's
+`destination` offset (`+320`), the same object holds denormalized near-zero
+garbage (`0.0, -5.6e-43, 1.0e-38`) — not remotely plausible as a position.
+Widening the check further: **none** of `ActorInfo`'s Wii-schema field
+offsets (scanned across the whole `0-340` byte range at that object's
+address) resolve to a single plausible segmented pointer (`segID` within
+`0-10`, this file's actual section count) — `playerSet`'s raw value has
+`segID=25`, `collisionInfo` has `segID=66`, both far out of range. The most
+likely explanation is a **class-layout difference between the Wii and PC
+compiles of `ActorInfo`** (different base-class/vtable size before the
+class's own fields start, shifting every offset by some constant not yet
+determined — no anchor field was found to solve for the shift directly).
+
+**Practical upshot**: treat every offset in `wii_field_schema.json` as
+*Wii-verified only* until independently cross-checked against real PC data.
+This also retroactively weakens an earlier claim in this doc: the "matched
+exactly" confirmation given for `GeneratorGenerationFields` above was hand-
+decompiling the *same Wii ELF* a second time and getting the same numbers —
+that's internal consistency (two extraction methods against one binary
+agreeing), not independent verification against the PC build the way
+`destination` was just checked and failed. **No class in this schema has
+actually been confirmed correct against the PC build yet.** The
+`GeneratorGenerationFields`/`GeneratorMovementFields`/`GeneratorInfo`
+corrections earlier in this doc remain useful as *Wii-side* ground truth
+and are very likely still directionally right (real field names, plausible
+relative field ordering), but their exact byte offsets should be re-verified
+against the PC binary before being relied on for editing real PC game files.
+The only offset in this entire investigation actually confirmed against the
+PC build is `level.go`'s original `ActorInfo: +80`, which predates all of
+this Wii-ELF work and comes from a completely different, PC-native
+methodology. Cross-checking each class against real PC binaries
+(`igCore.dll`/the per-class `*InfoLib.dll`s, e.g. `ActorInfoLib.dll` for
+`ActorInfo`) before trusting its Wii offsets for anything beyond Wii-side
+curiosity is the necessary next step, not an optional nice-to-have.
 
 **Known gaps** (same shape as the schema's own gaps above): `FullWalk` only
 follows one edge type (`igGroup.childList`). Other container/reference
@@ -255,6 +289,116 @@ next increment, rather than a wholesale rewrite — the container-reading
 primitives (`ReadObjectListContainer`, `ResolveSegPointer`) are already
 generic enough to reuse for any other class's list field once its offset is
 known.
+
+## PC-verified fields (`ActorInfo`, first class actually cross-checked)
+
+Direct follow-up to the "Major caveat" above: `ActorInfo` is now the first
+class in this whole investigation to have real fields **independently
+confirmed against the PC binary** (`ActorInfoLib.dll`), not just the Wii
+ELF. This also produced a second, more impactful bug fix than the class
+schema itself — see below.
+
+**Methodology**: same idea as the Wii extraction, but via Ghidra's live
+decompiler instead of raw instruction decoding, since MSVC's output isn't as
+uniformly simple as the Metrowerks PPC accessors were. `ActorInfoLib.dll`'s
+PE export table already carries full demangled C++ names (MSVC mangling,
+e.g. `?getDestination@ActorInfo@TFBActorInfo@Gap@@QAEAAVigVec4f@Math@3@XZ`),
+but — same surprise as `igCore.dll` and `Mad2.elf` earlier this session —
+Ghidra's auto-analysis doesn't actually create `Function` objects at every
+export address; `list_exports`/`list_functions` disagree until you
+explicitly `create_function` at each address of interest (it then picks up
+the already-demangled export name automatically). Once created,
+`decompile_function` on each gives clean, simple `this+0xNN` bodies, same
+spirit as the Wii pattern-match, just done by hand this round rather than
+scripted.
+
+**Confirmed real PC offsets for `ActorInfo`** (all in `mad2iga/schema.go`'s
+`pcVerifiedFields`, each tagged `"source": "pc"` so `objects-dump`'s output
+and any future consumer can tell PC-confirmed fields from Wii-only ones):
+
+| Field | PC offset | Confirmed via |
+|---|---|---|
+| `collisionInfo` | `0x120` | `getCollisionInfoToVariant@0x10001c90` |
+| `waypoints` | `0x14c` | `getWaypointsToVariant@0x10002700` |
+| `controller` | `0x140` | `getControllerToVariant@0x10001b80` |
+| `physicsParameters` / `vehicleParameters` | `0x148` (shared) | `getPhysicsParametersToVariant@0x10001c10` / `getVehicleParametersToVariant@0x10001c50` — both literally read the same field and return it only if `isOfType()` matches their own expected type, confirming the Wii schema's odd choice to give both the same offset (there, 308) was directionally right even though the number itself didn't transfer |
+| `logicMatrix` | `0x60` | `logicMatrix@0x10001f80`: returns `this+0x60` when a `TFBTransform` delegate at `+0x160` is absent, i.e. `AlchemyCommonLib::TFBTransform`'s local `igMatrix44f` |
+| `destination` | `0x150`/`0x154`/`0x158` (Vec3f) | `getDestination@0x100015b0` / `setDestination@0x100015c0` — **not the resting position**, see below |
+| `velocity` | *(none — indirect)* | `getVelocity@0x10001de0` returns `*(this+0x160)+0x58`: stored on a separate delegate object, not inline in `ActorInfo` at all |
+
+**Disproven fields, removed rather than re-pointed** (`pcDisprovenFields`):
+`playerSet`/`activeSet` (and, by the same accessor family, presumably
+`inactiveSet`/`removedSet`) turned out not to be per-instance fields at all.
+`getPlayerSetToVariant`/`getActiveSetToVariant` don't read `this` — they
+read a **shared global** (`__interface_ActorInfo_..._igSmartPointer_...`) at
+a fixed offset off of it. This is the real explanation for the
+"identical across all instances" anomaly first flagged in the object-graph
+walker section above — not wrong per-instance offsets landing on garbage
+(as `destination` was), but genuinely non-instance, class-shared data. Both
+explanations turned out to be true for different fields in the same class,
+which is itself a useful lesson: "every instance reads the same value" is
+not on its own diagnostic of which failure mode you're looking at.
+
+**A second, more consequential bug found along the way**: `ResolveSegPointer`
+was resolving `segID == 0` as literal Section 0. Cross-checking `collisionInfo`/
+`waypoints`/`physicsParameters`'s raw values against the real file showed
+they instead resolve correctly as **Section-1-relative** (i.e. `segID == 0`
+means "the pointer's own containing section," not "Section index 0") — all
+three then resolve to exactly the expected class (`CollisionInfo`,
+`ActorWaypointList`, `ActorParameters`). Fixed in `ResolveSegPointer`
+(see its doc comment for the precise semantics and caveats), and separately
+confirmed the fix didn't break the *other* consumer of that function,
+`WalkGroupChildren`/`ReadObjectListContainer`: scanned the file directly for
+an `igGroup` instance with a resolvable child list and found one whose 4
+children all resolve to valid, correctly-classed objects
+(`igSimpleUserInfo` ×4) under the corrected scheme. This fix affects every
+future use of segmented pointers in this codebase, not just `ActorInfo`'s
+fields — worth remembering it's now part of the baseline, not a per-class
+detail.
+
+**`objects-dump` now resolves pointer fields**: any schema field with
+`Kind: ["ptr"]` (currently `ActorInfo`'s `controller`/`collisionInfo`/
+`waypoints`/`physicsParameters`/`vehicleParameters`) is resolved through
+`ResolveSegPointer` and reported as `{raw, resolved_addr, target_class,
+resolved}` rather than a bare integer. Re-run against `WaterholeBLD`: 529/529
+`ActorInfo` resolve `collisionInfo` and `waypoints`, 394/529 resolve
+`physicsParameters`/`vehicleParameters` (the rest are actors with no physics
+override, `raw == 0` — a legitimate "none," not a failure), `controller`
+resolves for none in this level (expected — none of Waterhole's `ActorInfo`
+instances are player-controlled).
+
+**`+80` reconciled — RESOLVED.** `level.go`'s original `ActorInfo: +80`
+translation offset is `worldMatrix`'s (see `pcVerifiedFields`, base `+0x20`)
+translation row: `+0x20 + 3*16 = +0x50 = 80`. Confirmed directly, not just
+arithmetically: read all 16 floats at a real coin's `ActorInfo+0x20`
+(`WaterholeBLD`, addr `0x790c70`) and got an exact identity rotation/scale
+(rows 0-2: `(1,0,0,0)/(0,1,0,0)/(0,0,1,0)`) with row 3 reading
+`(74.747, 6.370, -59.887, 1.0)` — precisely the known-good coordinate. A new
+schema entry, `position` (`+0x50`/`+0x54`/`+0x58`, i.e. `worldMatrix`'s row
+3), exposes this directly as a plain Vec3f, so `objects-dump` now surfaces
+real, correct positions for every `ActorInfo` without needing to
+cross-reference `level-dump`'s separate coordinate scan at all — verified:
+the same coin now shows `"position": [74.746994, 6.3700185, -59.886932]`
+directly in `objects-dump`'s output.
+
+This also nails down what `logicMatrix` (`+0x60`) actually is: checked the
+same real coin's bytes there and it's all-zero, across every `ActorInfo`
+sampled — genuinely dead/unused in serialized level data, confirming it's
+runtime-only scratch storage (the "no delegate" fallback path
+`ActorInfo::logicMatrix()` takes, which just apparently never gets written
+to for ordinary placed level objects) rather than a second meaningful
+transform, and not a competing candidate for "where is this object."
+
+This upgrades the earlier "no class in this schema has actually been
+confirmed correct against the PC build yet" claim: `ActorInfo` now has real,
+PC-confirmed data for 6 fields, with a clear, repeatable methodology
+(`create_function` at each relevant export address, decompile, read the
+`this+0xNN` pattern) for extending this to more classes and more of
+`ActorInfo`'s own remaining fields. That remains manual/interactive so far
+— an x86-equivalent of `extract_schema.py` (pattern-matching decompiled
+output or raw x86 `mov`/`movss` instructions the same way the PPC version
+pattern-matches `lwz`/`stw`/`lfs`/`stfs`) across every `*InfoLib.dll` would
+be the natural way to scale this up, not yet attempted.
 
 ## Files
 
@@ -283,3 +427,196 @@ Consuming code, in `mad2iga/` (this repo):
   `ResolveSegPointer`, `FieldValue`, etc.).
 - `../mad2repack/objects.go` — the `objects-dump` CLI command wiring the
   above into a JSON dump (class histogram + per-object known-field values).
+
+## Naming investigation (unsolved — read before attempting again)
+
+Instance naming (e.g. knowing a given `ActorInfo` is `Coin_LandCroc_B_1`) is
+the biggest remaining gap in "can we edit anything": object *discovery* and
+*field access* both now work via real graph traversal (`objects-dump`), but
+no reliable name resolution exists. This section exists so a future attempt
+doesn't repeat the same dead ends — per direct user feedback, naming has a
+long history of "every fix somehow made it worse," so treat anything below
+as ruled-out, not as a starting point to tweak.
+
+**What's confirmed real:**
+- `igNamedObject::getName()` (Wii ELF, `Gap::Core::igNamedObject`, decompiled
+  directly) reads `*(this+8)` as an **`igStringRef`** — a tagged
+  pointer/index (top bit distinguishes a pool-item reference from a literal)
+  — not a plain integer. This is the same encoding `igMetaField` uses for
+  its own name storage (`igCore.dll`, confirmed earlier in this document).
+- `level.go`'s existing heuristic already reads `ActorInfo+8` for a
+  "nameVal", but treats it as a **flat sequential ordinal** into an array
+  built by scanning the file's null-terminated strings in order
+  (`stringsList[nameVal+1]`). That's a fundamentally different, much
+  simpler interpretation than the real `igStringRef` encoding above — a
+  strong candidate explanation for why naming has never worked reliably:
+  the field being read might be structurally right (`+8` does look
+  name-shaped, per the Wii accessor) while the *decoding* of its value has
+  always been wrong.
+- A second, independent, architecturally-documented naming mechanism also
+  exists: the file's trailing Name Table (see `IGZ_FORMAT.md`), a flat array
+  of string-pool ordinals indexed by an object's position in the top-level
+  array — **not** a per-object embedded field at all. Confirmed the header
+  is real: read a real `level.bld`'s trailing table and its
+  `objectCount`/`nameCount` fields exactly matched the top-level object
+  array's own header (1803/1803 for `WaterholeBLD`).
+
+**What was tried and disproved (with evidence, so it isn't re-tried
+blindly):**
+1. *Restrict name lookups to graph-confirmed real objects* (ruling out
+   false-positive objects as the cause). Tested against all 529
+   structurally-real `ActorInfo` instances in `WaterholeBLD` — every lookup
+   resolved to a real, well-formed string, but strings unrelated to that
+   specific object (`"Current Music"`, `"Thermal_6"`, `"Hat Attach"`). Rules
+   out "wrong object" as the failure mode; the field/decoding itself is
+   wrong.
+2. *Auto-detect the true string-pool boundary* (replacing `level.go`'s
+   hardcoded `+0xA840` magic gap with a computed one, scanning forward for a
+   sustained run of plausible printable strings). Landed within 4 bytes of
+   the known-good hardcoded value on `WaterholeBLD` — but produced clear
+   false positives (garbage boundaries) on 3 other levels tested
+   (`BraveNewWildBLD`, `ConvoyChaseBLD`, `DrMelmanBLD`). Does not
+   generalize; not shipped.
+3. *Interpret the Name Table's per-object ordinal as an array index* into a
+   string list built by null-scanning from a candidate pool start. Tested
+   against a known-real coin (`WaterholeBLD`, `ActorInfo@0x790c70`, top-level
+   index 1272, ordinal value 8325): resolved to `"torInfob16"` — a clear
+   mid-string fragment, not a real name.
+4. *Interpret the same ordinal as a byte offset* from the pool start instead
+   of an array index. Same object: landed inside an embedded HLSL shader
+   source blob (`"...OutUVShadow.xy = InUV2Map.xy;..."`), also not a name.
+5. *Interpret `ActorInfo+8`'s raw value as a segmented pointer* (the same
+   `segID`/24-bit-offset scheme confirmed for `collisionInfo`/`waypoints`/
+   etc. elsewhere in this document), tried both as `segID==0` meaning literal
+   Section 0 and as `segID==0` meaning "same section as the pointer" (Section
+   1). Same coin, same field: the first landed inside what looks like an
+   unrelated small-integer table (possibly the class directory's own
+   internals); the second landed inside a different, evenly-strided table of
+   implausibly large values. Neither resolved to string data at all.
+6. *Find a PC-native `getName`/`setName` accessor for `ActorInfo` directly*
+   (the same successful strategy used for `collisionInfo`/`waypoints`/etc.).
+   `ActorInfoLib.dll`'s export table has no such symbol — if `ActorInfo`
+   really does inherit a name field from `igNamedObject` the way the Wii
+   accessor suggests, the accessor is either non-virtual-but-inlined,
+   reached only through a vtable slot (not distinguishable from other
+   generic virtuals without deeper vtable analysis — tried scanning
+   `igIGZLoader`'s vtable for a distinctive "loader" method as a related
+   detour and it also didn't lead anywhere quickly, see below), or `ActorInfo`
+   doesn't actually get its display name this way on PC at all.
+
+**A related detour that didn't pan out**: went looking for the actual
+Section-0 string-pool *loader* code (hoping a real parse of the "gap" before
+the plain string list would reveal its true size/structure, rather than a
+byte-pattern guess). Found `igIGZLoader`/`igIGZSaver` classes in `igCore.dll`
+and pulled their vtable (`0x10099b6c`), but the "distinctive" (non-repeated)
+vtable slots turned out to just be ordinary per-class virtuals every
+`igObject` overrides differently anyway (`userRelease`, `createCopy`,
+`getClassMeta`) — not a specialized IGZ-parsing method. The actual
+Section-0/string-pool loading logic (if it's a distinct function at all,
+rather than inlined elsewhere) hasn't been located.
+
+**Follow-up, same session — `arkRegisterInitialize@ActorInfo` decompiled
+directly (`ActorInfoLib.dll`, address `0x10006300`)**: this is `ActorInfo`'s
+*complete, exhaustive* field-registration function — every field the class
+declares, by name and offset, in one place (the PC-side sibling of the Wii
+`setMetaFieldBasicPropertiesAndValidateAll` bulk-registration pattern used
+throughout this document). Full result: `controller` (`0x140`), `model`
+(`0x144`), `actorParameters` (`0x148` — confirms the earlier
+`physicsParameters`/`vehicleParameters` finding: both are type-checked
+*views* of this one field, not separate fields), `wayPoints` (`0x14c`),
+`destination` (`0x150`), `gameActor` (`0x160` — and this is the same
+delegate pointer `getVelocity` dereferences, `*(this+0x160)+0x58`, tying
+that earlier finding together), plus three fields inherited from a base
+class with only their default value overridden here (`majorIndex`,
+`shadowCastMethod` — the latter confirms `Placement`'s Wii-derived
+`shadowCastMethod` field is real — and `receivesShadows`).
+
+**This settles the question above**: there is no name/string field
+anywhere in this list. `ActorInfo` almost certainly has **no embedded
+per-instance display name at all** on the PC build. The `+8` field
+`level.go`'s heuristic has always read as "nameVal" is not a name field —
+it was never one; it's very likely landing on part of `model`/`controller`'s
+storage or padding and only coincidentally producing small integers that
+sometimes happen to resolve to *some* string. This is probably the actual
+root cause of the whole multi-year naming struggle: chasing a field that
+was never the right one to begin with. The Name Table (indexed by top-level
+array position, not any per-object field) is the only mechanism left
+standing.
+
+**Follow-up test on the Name Table itself — real progress, still not a
+working fix.** Tested the hypothesis that the mysterious Section-0 "gap"
+(previously assumed to be a hash table, per `research_notes.md`'s
+906-byte guess) is actually a flat array of `uint32` *byte offsets*
+(`gap[ordinal]` → offset from the real string data's start), rather than
+something requiring null-scanning to build a sequential index. Result: a
+**56% hit rate** (651/1164 sampled entries) landing on real, printable text
+— far above chance, real signal. But testing broadly across all 1803
+top-level Name Table entries revealed the resolved strings are
+systematically **truncated suffixes** of real names — `"rassFx_Shape840"`
+(missing the leading `"G"` of `"GrassFx_Shape840"`), `"D_Bark"` (a fragment
+of `"GiraffeAcacia1D_Bark"`), `"coalescedWorld"` appearing standalone
+multiple times at different indices. That's the unmistakable signature of a
+**suffix-shared/deduplicated string pool** — a common space/build-time
+optimization where multiple logical strings share common trailing bytes in
+one blob, each addressed by a different starting offset into the *same*
+storage, rather than each string being stored as an independent
+null-terminated entry. The offset-table mechanism is very likely
+structurally correct; what's still missing is either (a) confirming the
+target coin's top-level array index was computed correctly in the first
+place (computed via matching the object's absolute address against the
+top-level pointer array — not independently re-verified this round), or (b)
+understanding the exact rule for where a "logical" name starts within the
+shared suffix blob (not every substring boundary is a valid string start —
+some other marker or table must distinguish "real named entries" from
+arbitrary suffix continuations, otherwise there'd be no way for the game
+itself to know where `"GrassFx_Shape840"` "really" begins rather than
+resolving to `"Fx_Shape840"` or any other inner substring).
+
+**Follow-up, same session — thread 1 checked, ruled out.** Re-verified the
+top-level-index computation directly: address `0x790c70` maps uniquely and
+bidirectionally to index `1272` (searched all 1803 top-level entries — only
+one match, and looking index `1272` back up in the array returns the same
+address). The index is not the bug.
+
+**Then searched for the real string directly and measured against it —
+concrete progress, still unresolved.** The exact string
+`"Coin_LandCroc_B_1\0"` occurs exactly once in the whole file, at absolute
+offset `0x4b005` (well inside Section 0, after the "gap"). Computed its
+*true* sequential ordinal (counting null-terminated segments one at a time)
+under four different counting conventions, none of which produced the
+Name Table's stored ordinal for this object (`8325`):
+
+| Counting scheme | Result |
+|---|---|
+| Sequential from `real_str_start` (the `+0xA840` boundary) | `3296` |
+| Sequential from `gap_start` (start of the "gap," no boundary skip) | `16321` |
+| Sequential from the class directory's own start | `16510` |
+| 4-byte-aligned from `real_str_start` | never lands exactly on `0x4b005` at all (overshoots) |
+
+None match `8325`, and no simple scale/offset relationship connects them
+(`8325` isn't `3296 × N` or `3296 + N` for any obviously-meaningful `N`,
+and `16321`/`16510` are roughly double `8325` but not exactly, ruling out a
+clean "count pairs as one" fix too). This means the real resolution
+algorithm is not simply "sequential ordinal from any of these obvious
+starting points, with or without alignment" — something else determines
+how a Name Table ordinal maps to a byte position, and it hasn't been found
+in six independently-tested schemes across two separate investigation
+passes.
+
+**Where this leaves things**: this is a well-defined, narrowly-scoped
+remaining unknown (not a vague "naming is hard") — the exact function
+`ordinal(8325) → byte offset 0x4b005` for this one confirmed real
+data point. Given the offset-table hypothesis's 56% raw hit-rate on
+*something* plausible-looking, the mechanism family is probably close but
+not exactly right (missing a header/count field before the real table
+starts, a different element stride, or an extra indirection layer). Given
+six schemes have now been tried and precisely ruled out with hard numbers,
+further progress most likely needs either: finding the actual
+ordinal-resolution code directly (a distinct function, not yet located,
+possibly not even in `igCore.dll` if this was baked by an offline
+asset-cooker tool rather than resolved at runtime), or brute-force solving
+for the transformation using this one confirmed `(ordinal, byte offset)`
+data point plus a second independently-confirmed one (not yet gathered) to
+constrain the search. Time-boxed here for this session — diminishing
+returns on continued blind counting-scheme guessing without new
+information.

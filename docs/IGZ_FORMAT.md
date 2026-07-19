@@ -135,12 +135,32 @@ offset := ptr & 0x00FFFFFF  // low 24 bits
 absoluteFileOffset := sectionDescriptors[segID].offset + offset
 ```
 
-`segID` indexes directly into the section-descriptor table (section 0 is
-`segID == 0`, etc.) — **not** `segID - 1`. Cross-file pointers (a level
-referencing `global.bld`) use `segID` values beyond the local file's own
-section count, resolved against whichever other stream is loaded at the
-same time; see `mad2assetextractor/docs/demo.md` for what's known about how
-that resolution works (and the open crash it documents when it doesn't).
+⚠️ **Correction (found via `mad2iga/objgraph.go`'s `ResolveSegPointer`,
+cross-checked against real `ActorInfo` pointer fields on a real
+`level.bld`)**: `segID == 0` does **not** mean literal Section 0. It means
+"relative to whatever section the pointer field itself lives in." For every
+ordinary object-to-object reference inside the main object graph, that's
+Section 1 — confirmed three separate ways: `ActorInfo.collisionInfo`/
+`.waypoints`/`.physicsParameters` (see `CLASS_SCHEMA.md`'s "PC-verified
+fields" section) all resolve to exactly their expected target class
+(`CollisionInfo`/`ActorWaypointList`/`ActorParameters`) only under this
+interpretation, and separately, `igGroup.childList`'s pointer resolves to a
+real child object list the same way. Treating `segID == 0` as literal
+Section 0 (the original, wrong reading — matching this doc's very first
+version, and also what `mad2assetextractor/docs/research_notes.md`'s
+`findGeneratorName` implicitly assumed) makes every such pointer resolve
+into Section 0's small class-directory/string-pool area instead, which is
+never right for an object-to-object reference.
+
+`segID >= 1` is left as a direct section-table index (section *N*'s own
+`segID` literally being *N*, not *N-1*) — this part is unchanged from
+before, but has **not** been independently re-verified the way `segID == 0`
+now has; it comes from `mad2assetextractor/docs/demo.md`'s separate
+observations about cross-file segment references (e.g. "`0x05XXXXXX` for
+Segment 5/global Segment 1" when a level references `global.bld`). Given
+`segID == 0` turned out not to mean what it looked like it meant, it's
+worth treating the nonzero case as unconfirmed too until someone actually
+checks it the same way.
 
 ## Name table (end of file, `level.bld` only)
 

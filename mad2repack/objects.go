@@ -26,6 +26,32 @@ type ObjectDumpEntry struct {
 	Fields    map[string]interface{} `json:"fields,omitempty"`
 }
 
+// isFiniteJSONValue rejects NaN/Inf floats (single or, for a Vec3f field,
+// any of its 3 components) — these aren't valid JSON and would otherwise
+// abort the whole dump on encode.
+func isFiniteJSONValue(v interface{}) bool {
+	switch x := v.(type) {
+	case float32:
+		return !math.IsNaN(float64(x)) && !math.IsInf(float64(x), 0)
+	case [3]float32:
+		for _, f := range x {
+			if math.IsNaN(float64(f)) || math.IsInf(float64(f), 0) {
+				return false
+			}
+		}
+		return true
+	case [16]float32:
+		for _, f := range x {
+			if math.IsNaN(float64(f)) || math.IsInf(float64(f), 0) {
+				return false
+			}
+		}
+		return true
+	default:
+		return true
+	}
+}
+
 // cmdObjectsDump walks the real Section 1 object graph (mad2iga.ObjectGraph)
 // rather than scanning for coordinate-shaped byte patterns like `level-dump`
 // does. See docs/IGZ_FORMAT.md and docs/CLASS_SCHEMA.md for what this is
@@ -84,7 +110,7 @@ func cmdObjectsDump(bldPath, jsonPath string) error {
 				// class's usual shape (e.g. a variable-size trailing
 				// array pushing later fields around) — non-finite floats
 				// aren't valid JSON, so drop rather than corrupt the file.
-				if f, isFloat := v.(float32); isFloat && (math.IsNaN(float64(f)) || math.IsInf(float64(f), 0)) {
+				if !isFiniteJSONValue(v) {
 					continue
 				}
 				entry.Fields[fieldName] = v

@@ -6,17 +6,30 @@ import (
 	"strings"
 )
 
+// ⚠️ These offsets come from the Wii demo build (PowerPC compile) and are
+// NOT confirmed to match the PC build's struct layout — see
+// ../docs/CLASS_SCHEMA.md's "Major caveat" note. Directly disproved for at
+// least one field so far (ActorInfo.destination reads as garbage on a real
+// PC level.bld; the actual PC-verified translation offset, from an
+// unrelated pre-existing PC-native heuristic, is ActorInfo+80, nowhere near
+// any offset this schema records for ActorInfo). Treat every value here as
+// "known on Wii" only until independently checked against a PC binary.
+//
 //go:embed wii_field_schema.json
 var wiiFieldSchemaJSON embed.FS
 
-// FieldInfo describes one field of a class, as reverse-engineered from the
-// unstripped Wii demo build (see ../docs/CLASS_SCHEMA.md). Offset is either a
-// single int (the common case) or a []interface{} of ints when multiple
-// accessors disagreed (e.g. overloads) — treat those as lower-confidence.
+// FieldInfo describes one field of a class. Offset is either a single int
+// (the common case) or a []interface{} of ints when multiple accessors
+// disagreed (e.g. overloads) — treat those as lower-confidence, except see
+// Vec3Offset below. Source records where this particular entry's data came
+// from — "wii" (unconfirmed on PC, see the caveat below) or "pc" (confirmed
+// by decompiling the real PC DLL, e.g. ActorInfoLib.dll — see
+// ../docs/CLASS_SCHEMA.md's "PC-verified fields" section).
 type FieldInfo struct {
 	Offset    interface{} `json:"offset"`
 	Kind      []string    `json:"kind"`
 	Accessors []string    `json:"accessors"`
+	Source    string      `json:"source,omitempty"`
 }
 
 // wiiSchema maps a fully-qualified class path (e.g. "Gap::TFBParticleInfo::GeneratorInfo")
@@ -42,18 +55,130 @@ func init() {
 	for classPath, fields := range wiiSchema {
 		parts := strings.Split(classPath, "::")
 		bare := parts[len(parts)-1]
+		for name, info := range fields {
+			info.Source = "wii"
+			fields[name] = info
+		}
 		wiiSchemaByBareName[bare] = fields
 	}
 }
 
+// pcVerifiedFields holds fields confirmed by directly decompiling the real
+// PC DLLs (ActorInfoLib.dll etc., not the Wii ELF) — see
+// ../docs/CLASS_SCHEMA.md's "PC-verified fields" section for the
+// decompiled evidence behind each entry. Small and hand-curated so far;
+// growing this the same systematic way extract_schema.py did for the Wii
+// ELF (an x86-equivalent pattern-matcher over decompiled/disassembled
+// accessor bodies in each *InfoLib.dll) is the natural next step, not yet
+// done.
+var pcVerifiedFields = map[string]map[string]FieldInfo{
+	"ActorInfo": {
+		// The real, file-serialized world transform: a row-major 4x4 matrix
+		// with translation-in-last-row convention. Directly confirmed
+		// against a real coin (WaterholeBLD, ActorInfo @0x790c70): rows 0-2
+		// read as an exact identity rotation/scale ((1,0,0,0)/(0,1,0,0)/
+		// (0,0,1,0)), row 3 reads (74.747, 6.370, -59.887, 1.0) — exactly
+		// level.go's independently-derived, already-working translation
+		// value at that object's +80, which is `worldMatrixBase + 3*16`
+		// (row 3 of a matrix based at +32). `position` below extracts that
+		// row directly so consumers don't have to.
+		"worldMatrix": {Offset: float64(0x20), Kind: []string{"matrix44f"}, Source: "pc",
+			Accessors: []string{"cross-checked against level.go's independently-derived ActorInfo:+80 translation offset; see docs/CLASS_SCHEMA.md"}},
+		"position": {Offset: []interface{}{float64(0x50), float64(0x54), float64(0x58)}, Kind: []string{"float"}, Source: "pc",
+			Accessors: []string{"row 3 (translation) of worldMatrix above, i.e. +32 + 3*16"}},
+		// AlchemyCommonLib::TFBTransform's local igMatrix44f, used ONLY when
+		// ActorInfo has no external transform delegate (see logicMatrix's
+		// null check on the +0x160 delegate pointer) — NOT the same as
+		// worldMatrix/position above. Confirmed genuinely unused/all-zero in
+		// every level-authored ActorInfo checked so far (runtime-only
+		// scratch storage, never meaningfully serialized) — kept in the
+		// schema mainly as a documented dead end so nobody re-investigates
+		// it as a position candidate.
+		"logicMatrix": {Offset: float64(0x60), Kind: []string{"matrix44f"}, Source: "pc",
+			Accessors: []string{"get:logicMatrix@0x10001f80 (ActorInfoLib.dll)"}},
+		// `destination` is a Vec3f, but per getDestinationToVariant's
+		// PositionMeasurement Meta type and setDestination's extra int
+		// parameter (turnTo-style movement request, not raw storage) this
+		// is an AI movement TARGET, not the object's resting position —
+		// do not use this for "where is this object" queries.
+		"destination": {Offset: []interface{}{float64(0x150), float64(0x154), float64(0x158)}, Kind: []string{"float"}, Source: "pc",
+			Accessors: []string{"get:getDestination@0x100015b0 (ActorInfoLib.dll)", "set:setDestination@0x100015c0 (ActorInfoLib.dll)"}},
+		// Kind "ptr" (not "int"): confirmed to be a Section-1-relative
+		// pointer to another real object, not a plain integer — verified by
+		// resolving each of these three raw values (via ResolveSegPointer,
+		// after fixing its segID==0 handling — see that function's comment)
+		// against a real level.bld and getting exactly the expected class
+		// on the other end (CollisionInfo, ActorWaypointList,
+		// ActorParameters respectively).
+		"controller":    {Offset: float64(0x140), Kind: []string{"ptr"}, Source: "pc", Accessors: []string{"get:getControllerToVariant@0x10001b80 (ActorInfoLib.dll)"}},
+		"collisionInfo": {Offset: float64(0x120), Kind: []string{"ptr"}, Source: "pc", Accessors: []string{"get:getCollisionInfoToVariant@0x10001c90 (ActorInfoLib.dll)"}},
+		"waypoints":     {Offset: float64(0x14c), Kind: []string{"ptr"}, Source: "pc", Accessors: []string{"get:getWaypointsToVariant@0x10002700 (ActorInfoLib.dll)"}},
+		// physicsParameters and vehicleParameters are BOTH just type-checked
+		// views of one shared pointer field (confirmed: both
+		// getPhysicsParametersToVariant@0x10001c10 and
+		// getVehicleParametersToVariant@0x10001c50 read *(this+0x148), then
+		// return it only if isOfType() matches their respective expected
+		// type, else 0) — not two separate fields, matching the Wii
+		// schema's own otherwise-odd choice to give them the same offset
+		// (308 there), just at the wrong absolute number for PC.
+		"physicsParameters": {Offset: float64(0x148), Kind: []string{"ptr"}, Source: "pc", Accessors: []string{"get:getPhysicsParametersToVariant@0x10001c10 (ActorInfoLib.dll)"}},
+		"vehicleParameters": {Offset: float64(0x148), Kind: []string{"ptr"}, Source: "pc", Accessors: []string{"get:getVehicleParametersToVariant@0x10001c50 (ActorInfoLib.dll)"}},
+		// velocity is NOT a direct field at all: getVelocity returns
+		// *(this+0x160) + 0x58 when the +0x160 delegate pointer is
+		// non-null, i.e. it's stored on a separate delegate object, not
+		// inline in ActorInfo. Recorded with a nil offset (skipped by
+		// FieldOffset/Vec3Offset, so it simply won't appear in dumps) to
+		// document the finding without producing a misleading value.
+		"velocity": {Offset: nil, Kind: []string{"indirect"}, Source: "pc",
+			Accessors: []string{"get:getVelocity@0x10001de0 (ActorInfoLib.dll): *(this+0x160)+0x58, this is not a plain field"}},
+	},
+}
+
+// pcDisprovenFields lists fields the Wii schema recorded for a class that
+// PC-side decompilation showed are not real per-instance fields at all
+// (rather than just being at a different offset) — removed entirely rather
+// than merely re-pointed, so callers don't get a plausible-looking but
+// meaningless value.
+var pcDisprovenFields = map[string][]string{
+	// getPlayerSetToVariant/getActiveSetToVariant (ActorInfoLib.dll
+	// 0x10001d00/0x10001d20) don't even read `this` — they read a shared
+	// global (`__interface_ActorInfo_..._igSmartPointer_...`) at a fixed
+	// offset off of it. Every ActorInfo instance in a level necessarily
+	// reads the same value, which is exactly the "identical across all
+	// instances" anomaly first noticed in objects-dump's output — not
+	// wrong per-instance offsets, but genuinely non-instance data.
+	// inactiveSet/removedSet were never independently checked but are the
+	// same accessor family (getInactiveSetToVariant/getRemovedSetToVariant)
+	// and almost certainly share this shape; excluded on that basis too.
+	"ActorInfo": {"playerSet", "activeSet", "inactiveSet", "removedSet"},
+}
+
 // ClassSchema returns the known field schema for a class, keyed by its bare
 // name as it appears in an IGZ file's own Section 0 class directory (e.g.
-// "GeneratorInfo", not "Gap::TFBParticleInfo::GeneratorInfo"). Only classes
-// reverse-engineered via the Wii demo build's debug symbols are covered —
-// see docs/CLASS_SCHEMA.md for what's covered and how to extend it.
+// "GeneratorInfo", not "Gap::TFBParticleInfo::GeneratorInfo"). Merges the
+// Wii-derived schema with any PC-verified overrides/removals for that class
+// (see pcVerifiedFields/pcDisprovenFields above) — PC data always wins where
+// both exist. See docs/CLASS_SCHEMA.md for what's covered and how to extend
+// it, and its "Major caveat" section for why Wii-only entries need this
+// treatment at all.
 func ClassSchema(bareName string) (map[string]FieldInfo, bool) {
-	fields, ok := wiiSchemaByBareName[bareName]
-	return fields, ok
+	wiiFields, hasWii := wiiSchemaByBareName[bareName]
+	pcFields, hasPC := pcVerifiedFields[bareName]
+	if !hasWii && !hasPC {
+		return nil, false
+	}
+
+	merged := make(map[string]FieldInfo, len(wiiFields)+len(pcFields))
+	for name, info := range wiiFields {
+		merged[name] = info
+	}
+	for _, name := range pcDisprovenFields[bareName] {
+		delete(merged, name)
+	}
+	for name, info := range pcFields {
+		merged[name] = info
+	}
+	return merged, true
 }
 
 // FieldOffset returns a field's byte offset if it's unambiguous (a single
@@ -65,4 +190,33 @@ func (f FieldInfo) FieldOffset() (int, bool) {
 	default:
 		return 0, false
 	}
+}
+
+// Vec3Offset returns a field's base byte offset if its recorded offset list
+// is exactly 3 evenly-spaced values (e.g. [320, 324, 328], stride 4) — the
+// shape a Vec3f setter/getter produces, since the extractor records every
+// rA==3 load/store offset it finds in the accessor body without grouping
+// them (see extract_schema.py / docs/CLASS_SCHEMA.md). Not every 3-entry
+// offset list is a Vec3f in principle, but in the current schema every one
+// observed is (e.g. ActorInfo.destination, GeneratorInfo's various
+// direction fields) — genuinely-disagreeing overloads have offsets that
+// don't form a clean arithmetic sequence and are correctly rejected here.
+func (f FieldInfo) Vec3Offset() (int, int, bool) {
+	list, ok := f.Offset.([]interface{})
+	if !ok || len(list) != 3 {
+		return 0, 0, false
+	}
+	vals := make([]int, 3)
+	for i, v := range list {
+		f, ok := v.(float64)
+		if !ok {
+			return 0, 0, false
+		}
+		vals[i] = int(f)
+	}
+	stride := vals[1] - vals[0]
+	if stride <= 0 || vals[2]-vals[1] != stride {
+		return 0, 0, false
+	}
+	return vals[0], stride, true
 }

@@ -274,6 +274,36 @@ func main() {
 			os.Exit(1)
 		}
 
+	case "snd-extract":
+		if len(args) < 2 {
+			fmt.Fprintf(os.Stderr, "Usage: mad2repack snd-extract <in.snds> <out>\n")
+			os.Exit(1)
+		}
+		if err := cmdSndExtract(args[0], args[1]); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+
+	case "snd-extract-all":
+		if len(args) < 2 {
+			fmt.Fprintf(os.Stderr, "Usage: mad2repack snd-extract-all <dir> <outdir>\n")
+			os.Exit(1)
+		}
+		if err := cmdSndExtractAll(args[0], args[1]); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+
+	case "tex-info":
+		if len(args) < 1 {
+			fmt.Fprintf(os.Stderr, "Usage: mad2repack tex-info <in.texs>\n")
+			os.Exit(1)
+		}
+		if err := cmdTexInfo(args[0]); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+
 	default:
 		fmt.Fprintf(os.Stderr, "Unknown command: %s\n\n", cmd)
 		printUsage()
@@ -299,6 +329,9 @@ func printUsage() {
 	fmt.Fprintf(os.Stderr, "  level-dump <bld> <out.json> Dump level float32 coordinates to JSON\n")
 	fmt.Fprintf(os.Stderr, "  level-compile <js> <orig.bld> <out.bld> Compile level coordinates from JSON metadata\n")
 	fmt.Fprintf(os.Stderr, "  objects-dump <bld> <out.json> Dump the real object graph (class + known fields), not a byte-pattern guess\n")
+	fmt.Fprintf(os.Stderr, "  snd-extract <in.snds> <out>     Decode one .snds to a playable file (.wav or .ogg, chosen automatically)\n")
+	fmt.Fprintf(os.Stderr, "  snd-extract-all <dir> <outdir>  Recursively decode every .snds under dir, mirroring its directory structure\n")
+	fmt.Fprintf(os.Stderr, "  tex-info <in.texs>              Print .texs container/class metadata and a best-effort dimension guess (see docs/TEXTURE_FORMAT.md)\n")
 }
 
 // cmdVerify extracts all files from an archive, repacks them, and verifies
