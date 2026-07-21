@@ -22,10 +22,28 @@ that reads/writes them (`mad2iga`, `mad2arc`, `mad2repack`, `mad2tool`).
   [`CLASS_SCHEMA.md`](CLASS_SCHEMA.md).
 - **TFBScript (level logic/behavior)** — the `ScriptSet`/`ScriptObject`/
   `Op*` classes encoding cutscene triggers, AI behavior, "what happens
-  when." The largest, highest-value, and currently least-covered part of
-  the class schema — semantic structure mapped from two external reference
-  projects, not yet independently verified against Mad2's own PC binaries.
-  See [`SCRIPT_FORMAT.md`](SCRIPT_FORMAT.md).
+  when." The largest namespace in the class directory; PC-verified field
+  offsets now exist for 75 of its 104 classes (the same
+  `arkRegisterInitialize` bulk-registration technique that cracked
+  `ActorInfo`, applied namespace-wide) and real graph traversal works —
+  `mad2repack script-dump` can pull a full, class-tagged, 1000+-opcode
+  compiled script straight out of a real level, with real variable names
+  (`OpCreateVariable.varName` resolves via a string-ordinal table) and
+  typed literal values (`RHSValueStack`'s int/float type-tag scheme) — both
+  confirmed this session. Per-instance naming via the `igNamedObject`/Name
+  Table mechanism is still unsolved, but content-matching on resolved
+  variable names works as a practical substitute (found `Rave_TrackReader`
+  and several `Rave_Track_<Song>` scripts this way, no instance name
+  needed). Control flow is now fully understood — a real, named global
+  program counter and a genuine global "arg stack" (confirmed by decompiling
+  the actual `execute()` methods of `OpFindVariable`/`OpSetValue`/
+  `OpCheckValue`/`OpForEach` in `ScriptInfoLib.dll`, not inferred) resolve
+  every `branchPC` forward-jump and every found/set variable reference. The
+  one remaining gap is precise: resolving *which* variable a given opcode
+  reads/writes needs either the not-yet-found compile-time local-slot-index
+  mechanism, or simulating that arg-stack across the real call graph — a
+  scoped, well-defined follow-up, not open-ended guessing. See
+  [`SCRIPT_FORMAT.md`](SCRIPT_FORMAT.md).
 - **`.snds` (audio)** — FSB3 (FMOD Sound Bank v3, a well-documented public
   format) plus a minority of plain Ogg Vorbis files sharing the same
   extension. Fully solved and verified against the entire 23,378-file
@@ -114,12 +132,24 @@ objects — all structurally verified, not guessed.
   which both now work via real graph traversal.
 - **Class field schema**: growing, verified-where-marked. `ActorInfo` is the
   first class with several fields confirmed against the real PC binary
-  (not just the Wii ELF) — see `CLASS_SCHEMA.md`.
-- **Instance naming**: unsolved. Two independent mechanisms exist in
-  principle (a per-object embedded `igStringRef` field, and a file-trailing
-  Name Table keyed by top-level array position) but neither has been made
-  to reliably resolve real names yet — see `CLASS_SCHEMA.md`'s "Naming
-  investigation" section for what's been tried and ruled out.
+  (not just the Wii ELF) — see `CLASS_SCHEMA.md`. The entire `TFBScriptInfo`
+  namespace (level logic/behavior — see `SCRIPT_FORMAT.md`) now has
+  PC-verified offsets for 75/104 classes via the same technique, with real
+  graph traversal (`mad2repack script-dump`) reaching actual compiled
+  scripts (a real 1283-opcode script pulled out of `VolcanoRave/level.bld`).
+- **Instance naming**: unsolved, and confirmed to be the *same* unsolved
+  problem in a second namespace now — `TFBScriptInfo`'s `ScriptObject`
+  inherits a real, clean, PC-native `igNamedObject::getName()` (`*(this+8)`
+  as a plain `char*`, per `igCore.dll`), but reading it off real `ScriptSet`
+  instances produces small sequential integers, not resolvable pointers —
+  the same "ordinal into some other table" shape as `ActorInfo`'s Name
+  Table problem, just reached via a different field. Two independent
+  mechanisms exist in principle for `ActorInfo` specifically (a per-object
+  embedded `igStringRef` field, and a file-trailing Name Table keyed by
+  top-level array position) but neither has been made to reliably resolve
+  real names yet — see `CLASS_SCHEMA.md`'s "Naming investigation" section
+  for what's been tried and ruled out, and `SCRIPT_FORMAT.md`'s
+  "VolcanoRave findings" for the `TFBScriptInfo`-specific attempts.
 - **Audio**: solved, verified against the whole corpus.
 - **Textures**: container/schema solved, pixel data unresolved.
 - **Havok animation**: identified, not yet parseable.

@@ -10,6 +10,10 @@ sdl2_mingw_version := "2.32.10"
 # see build-music-windows.
 sdl3_mingw_version := "3.4.12"
 
+# Pinned umu-launcher release used to bundle a portable umu-run -- see
+# fetch-umu-run.
+umu_launcher_version := "1.4.1"
+
 # Proton installation to use for all games (falls back to searching
 # compatibilitytools.d if this path doesn't exist).
 protonpath := env_var_or_default("PROTONPATH", home_directory() / ".local/share/Steam/compatibilitytools.d/GE-Proton10-34")
@@ -45,7 +49,24 @@ deploy-mad2demo: build
     cmake --build {{build_dir}} --target deploy-mad2demo
 
 # Resolve a working Proton path: use protonpath if it exists, else fall back
-# to the first GE-Proton*/Proton* found under Steam's install locations.
+# to the first GE-Proton*/Proton* found under any known Steam install
+# location -- NOT just ~/.local/share/Steam. That was the only location
+# ever checked here until a user reported Proton not being found at all
+# despite having it installed and working fine via Steam itself (used by
+# the older ../mad2mod tool, which launches through Steam directly and so
+# never needed to independently rediscover Proton's location the way this
+# repo's umu-run-based launch does): they simply had no
+# ~/.local/share/Steam directory -- Steam was installed via Flatpak. A
+# second user hit the same class of bug via Debian's own `steam` package,
+# whose real data directory is ~/.steam/debian-installation -- confirmed
+# directly from their machine that neither ~/.steam/root nor ~/.steam/steam
+# resolved to it as a symlink on their setup. ~/.steam/root and
+# ~/.steam/steam are symlinks Steam itself maintains pointing at wherever
+# its real data directory actually is -- normally authoritative regardless
+# of native/custom-prefix/relocated installs, kept first since they're
+# right far more often than not, but evidently not guaranteed on every
+# distro-packaged install; the Flatpak/Snap paths cover the two most common
+# non-native packaging cases on Linux.
 _resolve_proton:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -53,14 +74,24 @@ _resolve_proton:
         echo "{{protonpath}}"
         exit 0
     fi
-    fallback=$(find "$HOME/.local/share/Steam/compatibilitytools.d" "$HOME/.local/share/Steam/steamapps/common" -maxdepth 2 \( -name "GE-Proton*" -o -name "Proton*" \) 2>/dev/null | head -n 1)
-    if [ -z "$fallback" ]; then
-        echo "Error: Proton path not found at '{{protonpath}}' and no fallback was found." >&2
-        echo "Please install Proton via Steam or set PROTONPATH environment variable." >&2
-        exit 1
-    fi
-    echo "Warning: Default Proton path not found. Falling back to: $fallback" >&2
-    echo "$fallback"
+    for steam_root in \
+        "$HOME/.steam/root" \
+        "$HOME/.steam/steam" \
+        "$HOME/.steam/debian-installation" \
+        "$HOME/.local/share/Steam" \
+        "$HOME/.var/app/com.valvesoftware.Steam/.local/share/Steam" \
+        "$HOME/snap/steam/common/.local/share/Steam"
+    do
+        fallback=$(find "$steam_root/compatibilitytools.d" "$steam_root/steamapps/common" -maxdepth 1 \( -name "GE-Proton*" -o -name "Proton*" \) 2>/dev/null | head -n 1)
+        if [ -n "$fallback" ]; then
+            echo "Warning: Default Proton path not found. Falling back to: $fallback" >&2
+            echo "$fallback"
+            exit 0
+        fi
+    done
+    echo "Error: Proton path not found at '{{protonpath}}' and no fallback was found under any known Steam location." >&2
+    echo "Please install Proton via Steam or set PROTONPATH environment variable." >&2
+    exit 1
 
 # Launch `exe` (inside `dir`, relative to the repo root) via mad2relauncher
 # inside gamescope, using a wineprefix scoped to `prefix_name` under
@@ -164,6 +195,28 @@ _shell dir prefix_name:
 build-relauncher:
     cd mad2relauncher && go build -o "{{justfile_directory()}}/{{build_dir}}/mad2relauncher" .
 
+# Fetches umu-launcher's official portable "zipapp" release (a self-
+# contained Python zip archive, still needs a system python3 but nothing
+# else -- no umu-launcher package install required) and stages it as
+# build/umu-run, sitting right next to build/mad2relauncher. mad2relauncher
+# itself (gameloop.go's resolveUmuRun) prefers a copy found beside its own
+# binary over one on PATH, so this is what lets `just run` (and a packaged
+# mad2launcher release, via tools/package.sh staging the same file next to
+# mad2relauncher there too) work without the user separately installing
+# umu-launcher system-wide. Same "fetch a pinned upstream release once,
+# reuse it" shape as build-sm64-windows's SDL2 fetch.
+fetch-umu-run:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    mkdir -p "{{build_dir}}"
+    if [ -x "{{build_dir}}/umu-run" ]; then
+        exit 0
+    fi
+    echo "[just] Fetching umu-launcher {{umu_launcher_version}} portable zipapp..."
+    curl -sL "https://github.com/Open-Wine-Components/umu-launcher/releases/download/{{umu_launcher_version}}/umu-launcher-{{umu_launcher_version}}-zipapp.tar" \
+        | tar -x -C "{{build_dir}}" --strip-components=1 umu/umu-run
+    chmod +x "{{build_dir}}/umu-run"
+
 # Build the native Linux music/podcast playback engine (mad2music/), used by
 # mad2relauncher (music.go) which runs it continuously for the whole play
 # session, and mad2podcastmod.dll (inside the Wine process) which triggers
@@ -242,6 +295,28 @@ build-launcher:
 run-launcher: build-launcher
     "{{build_dir}}/mad2launcher"
 
+# Best-effort Windows cross-build of mad2launcher (i686-w64-mingw32,
+# GOARCH=386 for consistency with every other 32-bit Windows target in this
+# repo). Fyne v2's desktop driver needs cgo (OpenGL bindings), so this is
+# NOT a plain GOOS=windows go build like the pure-Go tools below -- it needs
+# CGO_ENABLED=1 plus a real C cross-compiler, same toolchain as the DLL mods
+# in cmake/mingw-i686.toolchain.cmake. Verified: the resulting .exe depends
+# on nothing beyond standard Windows system DLLs (GDI32/KERNEL32/OPENGL32/
+# SHELL32/USER32 plus the api-ms-win-crt-* UCRT forwarders, present on any
+# Windows 10+ install) -- no libgcc/libstdc++/libwinpthread mingw runtime
+# DLLs need to ship alongside it, unlike a typical mingw C++ cross-build.
+# -H windowsgui marks it as a GUI subsystem binary so Windows doesn't pop a
+# console window behind the Fyne window on launch.
+build-launcher-windows:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    mkdir -p "{{build_dir}}/windows"
+    cd mad2launcher
+    CGO_ENABLED=1 GOOS=windows GOARCH=386 \
+        CC=i686-w64-mingw32-gcc CXX=i686-w64-mingw32-g++ \
+        go build -ldflags "-H windowsgui" \
+        -o "{{justfile_directory()}}/{{build_dir}}/windows/mad2launcher.exe" .
+
 # Build the level-logic randomizer (mad2rando5/) that drives
 # mad2levelredirectmod via level_redirects.txt -- migrated in-repo from the
 # formerly-external ../mad2rando5 sibling. Plain `go build`, native to the
@@ -317,6 +392,14 @@ build-assettools-windows: build-mad2arc-windows build-mad2repack-windows build-m
 build-mad2musicpatch:
     cd mad2musicpatch && go build -o "{{justfile_directory()}}/{{build_dir}}/mad2musicpatch" .
 
+# Build mad2buildgames -- the tool mad2launcher's "Build Games" page shells
+# out to in order to compile SM64/Jak1 from a user-supplied ROM/ISO,
+# wrapping the exact same steps as build-sm64-linux/build-sm64-windows/
+# build-jak1-linux below (own standalone Go module, plain `go build`,
+# native to the host platform -- see mad2buildgames/main.go).
+build-buildgames:
+    cd mad2buildgames && go build -o "{{justfile_directory()}}/{{build_dir}}/mad2buildgames" .
+
 # All three game installs share a single wineprefix (./wineprefixes/mad2) —
 # they're just different installs of the same underlying game.
 
@@ -330,13 +413,13 @@ build-mad2musicpatch:
 # checks below.
 
 # Build, deploy, and launch the base game.
-run: deploy-mad2 build-relauncher build-music-linux (_play "mad2" "Mad2.exe" "mad2")
+run: deploy-mad2 build-relauncher fetch-umu-run build-music-linux (_play "mad2" "Mad2.exe" "mad2")
 
 # Build, deploy, and launch the Russian localization install.
-run-mad2russia: deploy-mad2russia build-relauncher build-music-linux (_play "mad2russia" "Mad2.exe" "mad2")
+run-mad2russia: deploy-mad2russia build-relauncher fetch-umu-run build-music-linux (_play "mad2russia" "Mad2.exe" "mad2")
 
 # Build, deploy, and launch the demo install.
-run-mad2demo: deploy-mad2demo build-relauncher build-music-linux (_play "mad2demo" "Mad2Demo.exe" "mad2")
+run-mad2demo: deploy-mad2demo build-relauncher fetch-umu-run build-music-linux (_play "mad2demo" "Mad2Demo.exe" "mad2")
 
 regedit: (_regedit "mad2" "mad2")
 regedit-mad2russia: (_regedit "mad2russia" "mad2")
@@ -350,19 +433,35 @@ shell-mad2demo: (_shell "mad2demo" "mad2")
 clean:
     rm -rf {{build_dir}}
 
+# Build and package every distributable piece of this repo (DLL mods, Go
+# CLI tools native + Windows cross-build where feasible, mad2music,
+# mad2launcher) into dist/linux/<pkg>/ and dist/windows/<pkg>/ per
+# deploy-plan.md §1-3, then archives each one (tar.gz linux, zip windows)
+# without deleting the staged directories -- see tools/package.sh for the
+# full package manifest and exactly what's included/excluded (SM64/Jak &
+# Daxter/Mario Legacy binaries are deliberately never packaged here, see its
+# header comment).
+package:
+    ./tools/package.sh
+
 # Build the native Linux SM64 sub-game binary (extern/sm64ex-alo), used by
 # mad2relauncher when the SM64Challenge chaos effect fires under Wine. Runs
 # inside the "mad2-debian" distrobox if present -- same precedent as
 # ../mad2mod's own build-sm64 recipe, whose asset-extraction/build tooling
 # has proven more reliable there than directly on an Arch-based host --
 # falling back to building directly on the host otherwise. Needs
-# extern/sm64ex-alo/baserom.us.z64 (a user-supplied ROM dump, not part of
-# this repo) to extract assets from.
+# roms/baserom.us.z64 (a user-supplied ROM dump, not part of this repo,
+# symlinked into extern/sm64ex-alo/ below) to extract assets from -- see
+# roms/README.md. One shared roms/ folder for both SM64 and Jak1 (and
+# Mario Legacy) instead of dropping a copy into each extern/* subproject.
 build-sm64-linux:
     #!/usr/bin/env bash
     set -euo pipefail
+    if [ ! -e extern/sm64ex-alo/baserom.us.z64 ] && [ -e roms/baserom.us.z64 ]; then
+        ln -s "$(pwd)/roms/baserom.us.z64" extern/sm64ex-alo/baserom.us.z64
+    fi
     if [ ! -e extern/sm64ex-alo/baserom.us.z64 ]; then
-        echo "Error: extern/sm64ex-alo/baserom.us.z64 not found (a US SM64 ROM dump is needed to extract assets)." >&2
+        echo "Error: baserom.us.z64 not found (drop a US SM64 ROM dump at roms/baserom.us.z64)." >&2
         exit 1
     fi
     if distrobox list 2>/dev/null | grep -q "mad2-debian"; then
@@ -381,16 +480,20 @@ build-sm64-linux:
 # build-sm64-linux is NOT (see that target's own dependents): Mad2 doesn't
 # require Jak1's ISO to play, JakChallenge is just disabled for the session
 # if this hasn't been run yet (see _play's jak1_flag check). Needs
-# extern/jak-project/jak1.iso (a user-supplied ISO dump, not part of this
-# repo) to extract assets from. The `task` runner (go-task) and, inside
-# mad2-debian, clang/lld/nasm/ninja-build/libssl-dev/libgl1-mesa-dev must
-# already be present -- see docs/setup/system/linux.md in that tree for the
-# full package list per distro.
+# roms/jak1.iso (a user-supplied ISO dump, not part of this repo, symlinked
+# into extern/jak-project/ below -- see roms/README.md) to extract assets
+# from. The `task` runner (go-task) and, inside mad2-debian,
+# clang/lld/nasm/ninja-build/libssl-dev/libgl1-mesa-dev must already be
+# present -- see docs/setup/system/linux.md in that tree for the full
+# package list per distro.
 build-jak1-linux:
     #!/usr/bin/env bash
     set -euo pipefail
+    if [ ! -e extern/jak-project/jak1.iso ] && [ -e roms/jak1.iso ]; then
+        ln -s "$(pwd)/roms/jak1.iso" extern/jak-project/jak1.iso
+    fi
     if [ ! -e extern/jak-project/jak1.iso ]; then
-        echo "Error: extern/jak-project/jak1.iso not found (a Jak & Daxter: The Precursor Legacy ISO dump is needed to extract assets)." >&2
+        echo "Error: jak1.iso not found (drop a Jak & Daxter: The Precursor Legacy ISO dump at roms/jak1.iso)." >&2
         exit 1
     fi
     cd extern/jak-project
@@ -407,13 +510,29 @@ build-jak1-linux:
         $RUN task gen-cmake-release
     fi
     $RUN task build-release
+    # The GOAL compiler doesn't create its own output directory tree --
+    # nothing in Taskfile.yml does either, so a truly fresh checkout (no
+    # prior manual run) fails outright with "Error: failed to write
+    # .../out/jak1/iso/JUB.DGO" the first time (mi) tries to write there.
+    # This repo's own extern/jak-project only ever avoided the bug because
+    # this tree was created once by hand a long time ago and just carried
+    # forward since (confirmed by testing an actually-fresh checkout).
+    mkdir -p out/jak1/fr3 out/jak1/iso out/jak1/obj
     # Extraction (unlike the CMake build above) isn't incremental and takes
     # ~30s -- skip it once decompiler_out/ already exists, matching the
     # marker-file check the old external jak1nolauncher/run.go used.
+    #
+    # $RUN (not bare ./build/...) matters here: these binaries' RUNPATH was
+    # baked in from inside mad2-debian if that's what built them above, and
+    # distrobox only bind-mounts $HOME at the same path inside the
+    # container -- anywhere else appears under /run/host/<path>. Running
+    # extractor/goalc outside the container again after a distrobox build
+    # can fail with "libcompiler.so: cannot open shared object file" for
+    # exactly that reason (confirmed) unless run back inside it.
     if [ ! -f decompiler_out/jak1/textures/tpage-dir.txt ]; then
-        ./build/decompiler/extractor -e -d -g jak1 jak1.iso
+        $RUN ./build/decompiler/extractor -e -d -g jak1 jak1.iso
     fi
-    ./build/goalc/goalc -c "(mi)" -g jak1
+    $RUN ./build/goalc/goalc -c "(mi)" -g jak1
 
 # Set up the vendored extern/mario-legacy (OpenGOAL-Mods/Super-Mario-Legacy
 # v0.0.28, https://github.com/OpenGOAL-Mods/Super-Mario-Legacy) used by
@@ -429,31 +548,45 @@ build-jak1-linux:
 # Idempotent: skips extraction if decompiler_out/ already exists, same
 # marker-file convention as build-jak1-linux.
 #
-# Needs the same Jak & Daxter ISO build-jak1-linux does (symlinked at
-# extern/mario-legacy/jak1.iso -- point it at your own copy if
-# extern/jak-project/jak1.iso isn't already set up), and a US Super Mario 64
-# .z64 ROM dump for libsm64 (symlinked at extern/mario-legacy/baserom.us.z64,
-# reusing the exact same ROM file build-sm64-linux already needs -- libsm64
-# auto-detects a ROM either next to the `gk` binary or in `iso_data/mario`,
-# confirmed via `strings gk`, and "next to gk" is what these symlinks
-# satisfy since gk lives at the repo root here).
+# Needs the same Jak & Daxter ISO build-jak1-linux does, and a US Super
+# Mario 64 .z64 ROM dump for libsm64 -- both pulled from the single shared
+# roms/ folder (roms/jak1.iso, roms/baserom.us.z64 -- see roms/README.md),
+# falling back to whatever extern/jak-project/jak1.iso or
+# extern/sm64ex-alo/baserom.us.z64 already point at for anyone who set those
+# up before roms/ existed. libsm64 auto-detects a ROM either next to the
+# `gk` binary or in `iso_data/mario` (confirmed via `strings gk`), and "next
+# to gk" is what these symlinks satisfy since gk lives at the repo root here.
 setup-mario-legacy:
     #!/usr/bin/env bash
     set -euo pipefail
-    cd extern/mario-legacy
-    if [ ! -e gk ]; then
+    if [ ! -e extern/mario-legacy/gk ]; then
         echo "Error: extern/mario-legacy/gk not found -- download+extract the v0.0.28 Linux release tarball from" >&2
         echo "https://github.com/OpenGOAL-Mods/Super-Mario-Legacy/releases/download/v0.0.28/linux-v0.0.28.tar.gz into extern/mario-legacy/ first." >&2
         exit 1
     fi
-    if [ ! -e jak1.iso ]; then
-        echo "Error: extern/mario-legacy/jak1.iso not found (symlink it at the same Jak & Daxter ISO extern/jak-project/jak1.iso points at, or your own copy)." >&2
+    if [ ! -e extern/mario-legacy/jak1.iso ]; then
+        if [ -e roms/jak1.iso ]; then
+            ln -s "$(pwd)/roms/jak1.iso" extern/mario-legacy/jak1.iso
+        elif [ -e extern/jak-project/jak1.iso ]; then
+            ln -s "$(pwd)/extern/jak-project/jak1.iso" extern/mario-legacy/jak1.iso
+        fi
+    fi
+    if [ ! -e extern/mario-legacy/jak1.iso ]; then
+        echo "Error: jak1.iso not found (drop a Jak & Daxter: The Precursor Legacy ISO dump at roms/jak1.iso)." >&2
         exit 1
     fi
-    if [ ! -e baserom.us.z64 ]; then
-        echo "Error: extern/mario-legacy/baserom.us.z64 not found (symlink it at the same ROM extern/sm64ex-alo/baserom.us.z64 points at, or your own copy)." >&2
+    if [ ! -e extern/mario-legacy/baserom.us.z64 ]; then
+        if [ -e roms/baserom.us.z64 ]; then
+            ln -s "$(pwd)/roms/baserom.us.z64" extern/mario-legacy/baserom.us.z64
+        elif [ -e extern/sm64ex-alo/baserom.us.z64 ]; then
+            ln -s "$(pwd)/extern/sm64ex-alo/baserom.us.z64" extern/mario-legacy/baserom.us.z64
+        fi
+    fi
+    if [ ! -e extern/mario-legacy/baserom.us.z64 ]; then
+        echo "Error: baserom.us.z64 not found (drop a US SM64 ROM dump at roms/baserom.us.z64)." >&2
         exit 1
     fi
+    cd extern/mario-legacy
     if [ ! -f data/decompiler_out/jak1/textures/tpage-dir.txt ]; then
         ./extractor -e -d -g jak1 jak1.iso
     fi
@@ -472,8 +605,11 @@ setup-mario-legacy:
 build-sm64-windows:
     #!/usr/bin/env bash
     set -euo pipefail
+    if [ ! -e extern/sm64ex-alo/baserom.us.z64 ] && [ -e roms/baserom.us.z64 ]; then
+        ln -s "$(pwd)/roms/baserom.us.z64" extern/sm64ex-alo/baserom.us.z64
+    fi
     if [ ! -e extern/sm64ex-alo/baserom.us.z64 ]; then
-        echo "Error: extern/sm64ex-alo/baserom.us.z64 not found (a US SM64 ROM dump is needed to extract assets)." >&2
+        echo "Error: baserom.us.z64 not found (drop a US SM64 ROM dump at roms/baserom.us.z64)." >&2
         exit 1
     fi
     sdl2_dir="extern/.sdl2-mingw"

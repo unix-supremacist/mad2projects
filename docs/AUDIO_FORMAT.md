@@ -166,6 +166,40 @@ mad2repack snd-extract <in.snds> <out>          # ext ignored; writes .wav or .o
 mad2repack snd-extract-all <dir> <outdir>       # recursively finds *.snds, mirrors directory structure
 ```
 
+## The encode-path asymmetry (extraction is one-way for FSB3)
+
+`fsb.go` only ever **decodes**: `ParseFSB3`/`DecodeToPCM16`/`WritePCM16WAV`
+turn FSB3 bytes into a WAV. There is no IMA-ADPCM *encoder* anywhere in
+`mad2iga`, and none is planned — going from an edited WAV back to a valid
+FSB3 container (correct sample-header table, correct ADPCM re-encoding)
+would be real reverse-engineering/format work, not a small addition, and
+nothing in this repo has attempted it.
+
+This matters concretely for `mad2tool extract`/`rebuild`
+(`mad2tool/main.go`'s `dumpSnds`/`compileSnds` — see
+[`UNPACK_REPACK.md`](UNPACK_REPACK.md) for the full design), which is the
+one place in this repo that actually tries to round-trip `.snds` through an
+edit:
+
+- The **Ogg Vorbis minority** has no asymmetry at all — `ExtractSnds`
+  returns its bytes completely unchanged (`ext=".ogg"`), so it's extracted
+  as `<name>.snds.ogg` (raw `.snds` deleted) and restored losslessly by
+  renaming back at rebuild time. Editing the `.ogg` with a real tool and
+  rebuilding genuinely changes the in-game audio.
+- The **FSB3 majority** gets `<name>.snds.wav` for convenience
+  (listening/inspection) but the raw `.snds` is kept **permanently**
+  alongside it, and rebuild always uses the raw bytes, never the `.wav`.
+  Editing the `.wav` is an honest no-op — not a silent drop, not a silently
+  served stale file, just genuinely inert until/unless an encoder exists.
+
+If an IMA-ADPCM/FSB3 encoder is ever added to `mad2iga`, `compileSnds`
+would need a matching update to actually consume an edited `.wav` for the
+FSB3 case — tracked as a known gap here and in `UNPACK_REPACK.md`, not
+attempted as part of this work (out of scope: this session deliberately
+did not pursue new FSB3-encoding reverse-engineering, per the same
+"don't chase open RE problems while wiring up tooling" boundary as
+everywhere else in this repo).
+
 ## Verification
 
 - **Full-corpus decode test**: every one of the 23,378 `.snds` files under

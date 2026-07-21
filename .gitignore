@@ -2,12 +2,16 @@
 /mad2/
 /mad2russia/
 /mad2demo/
+/mad2raw/
 
 # === Wine prefix (regenerated environment, not source) ===
 /wineprefixes/
 
 # === CMake/Ninja build output ===
 /build/
+
+# === Packaging script output (tools/package.sh / `just package`) ===
+/dist/
 
 # === Proprietary ROM/ISO files (user-supplied symlinks, never redistribute) ===
 *.z64
@@ -57,6 +61,7 @@ mad2music/build-windows/
 /mad2launcher/mad2launcher
 /mad2music/downloader/mad2music-downloader
 /mad2musicpatch/mad2musicpatch
+/mad2repack_bin
 
 # === Logs (mods log into the deployed game dir, already ignored above; ===
 # === anything elsewhere is a stray run artifact) ===

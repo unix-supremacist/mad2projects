@@ -71,6 +71,11 @@ add_subdirectory(mad2inputeffectsmod)
 # own CMakeLists.txt for why the "zz_" prefix is load-bearing, not cosmetic).
 add_subdirectory(mad2graphicseffectmod)
 
+# Mirror Mode: persistent horizontal-flip + stick-mirror toggle
+# (mad2/mods/zz_mad2mirrormod.dll -- also "zz_"-prefixed, see its own
+# CMakeLists.txt/src/mirrormod.cpp for why). Not a mad2effects chaos effect.
+add_subdirectory(mad2mirrormod)
+
 # Chaos-mode director loop (mad2/mods/mad2chaosmod.dll).
 add_subdirectory(mad2chaosmod)
 
@@ -109,6 +114,11 @@ add_subdirectory(mad2levelredirectmod)
 # mad2cheatapply/src/cheatapply.cpp for the pointer chain and cheat table.
 add_subdirectory(mad2cheatapply)
 
+# Diagnostic runtime logger for VolcanoRave's rhythm minigame's TFBScript
+# execution (mad2/mods/mad2rhythmlogger.dll) -- NOT a gameplay mod, see
+# mad2rhythmlogger/src/rhythmlogger.cpp and docs/SCRIPT_FORMAT.md.
+add_subdirectory(mad2rhythmlogger)
+
 # Defines a `deploy-<name>` target that copies version.dll + mods/*.dll into
 # `dir`. Used for each game install (mad2, mad2russia, mad2demo) so the same
 # build output can be deployed to whichever install(s) you're testing.
@@ -130,6 +140,7 @@ function(add_deploy_target name dir)
         COMMAND ${CMAKE_COMMAND} -E copy "$<TARGET_FILE:mad2effects>" "${dir}/mods/mad2effects.dll"
         COMMAND ${CMAKE_COMMAND} -E copy "$<TARGET_FILE:mad2inputeffectsmod>" "${dir}/mods/mad2inputeffectsmod.dll"
         COMMAND ${CMAKE_COMMAND} -E copy "$<TARGET_FILE:mad2graphicseffectmod>" "${dir}/mods/zz_mad2graphicseffectmod.dll"
+        COMMAND ${CMAKE_COMMAND} -E copy "$<TARGET_FILE:mad2mirrormod>" "${dir}/mods/zz_mad2mirrormod.dll"
         COMMAND ${CMAKE_COMMAND} -E copy "$<TARGET_FILE:mad2chaosmod>" "${dir}/mods/mad2chaosmod.dll"
         COMMAND ${CMAKE_COMMAND} -E copy "$<TARGET_FILE:mad2effectshud>" "${dir}/mods/mad2effectshud.dll"
         COMMAND ${CMAKE_COMMAND} -E copy "$<TARGET_FILE:mad2twitchcontrolsmod>" "${dir}/mods/mad2twitchcontrolsmod.dll"
@@ -140,7 +151,8 @@ function(add_deploy_target name dir)
         COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_CURRENT_SOURCE_DIR}/mad2gameeffectsmod/data/coordinates.yaml" "${dir}/coordinates.yaml"
         COMMAND ${CMAKE_COMMAND} -E copy "$<TARGET_FILE:mad2levelredirectmod>" "${dir}/mods/mad2levelredirectmod.dll"
         COMMAND ${CMAKE_COMMAND} -E copy "$<TARGET_FILE:mad2cheatapply>" "${dir}/mods/mad2cheatapply.dll"
-        DEPENDS mad2modloader mad2hookutil mad2textrenderer shadowfix mad2assetloader mad2saveloader mad2xinput mad2config igttimer playercoords inputdisplay twitchchat mad2effects mad2inputeffectsmod mad2graphicseffectmod mad2chaosmod mad2effectshud mad2twitchcontrolsmod mad2companionmod mad2podcastmod mad2musichud mad2gameeffectsmod mad2levelredirectmod mad2cheatapply
+        COMMAND ${CMAKE_COMMAND} -E copy "$<TARGET_FILE:mad2rhythmlogger>" "${dir}/mods/mad2rhythmlogger.dll"
+        DEPENDS mad2modloader mad2hookutil mad2textrenderer shadowfix mad2assetloader mad2saveloader mad2xinput mad2config igttimer playercoords inputdisplay twitchchat mad2effects mad2inputeffectsmod mad2graphicseffectmod mad2mirrormod mad2chaosmod mad2effectshud mad2twitchcontrolsmod mad2companionmod mad2podcastmod mad2musichud mad2gameeffectsmod mad2levelredirectmod mad2cheatapply mad2rhythmlogger
         COMMENT "Deploying version.dll and mods/*.dll to ${dir}"
     )
 endfunction()

@@ -71,7 +71,7 @@ func (a *AppState) LoadConfigForSelected() {
 }
 
 func (a *AppState) CategoryNames() []string {
-	names := []string{"Game Launch", "Cheats", "Mad2 Randomizer", "Music"}
+	names := []string{"Game Launch", "Cheats", "Mad2 Randomizer", "Music", "Build Games", "Mod Installer"}
 	if a.Cfg != nil {
 		// "Music" is a hardcoded category above (it owns seeding config.cfg's
 		// own [Music] section -- see ui_music.go), so skip it here to avoid
@@ -97,6 +97,10 @@ func (a *AppState) ShowCategory(name string) {
 		page = buildRandomizerPage(a)
 	case "Music":
 		page = buildMusicPage(a)
+	case "Build Games":
+		page = buildBuildGamesPage(a)
+	case "Mod Installer":
+		page = buildModInstallerPage(a)
 	default:
 		page = buildConfigCategoryPage(a, name)
 	}

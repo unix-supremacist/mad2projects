@@ -3,10 +3,35 @@ package main
 import (
 	"os"
 	"os/exec"
+	"path/filepath"
 	"sync"
 	"syscall"
 	"time"
 )
+
+// resolveUmuRun returns the umu-run command to exec -- prefers a copy
+// bundled right next to this binary (see tools/package.sh's stage_platform
+// call for mad2relauncher_linux, which stages one there via `just
+// fetch-umu-run`'s build/umu-run output) over requiring the user to
+// separately install the umu-launcher package system-wide, falling back to
+// plain "umu-run" resolved from PATH if no bundled copy is present. This is
+// a plain Python zipapp (see fetch-umu-run's own comment in justfile) --
+// still needs a system python3, but that's a far lower bar than a full
+// umu-launcher package install.
+func resolveUmuRun() string {
+	exe, err := os.Executable()
+	if err != nil {
+		return "umu-run"
+	}
+	if resolved, err := filepath.EvalSymlinks(exe); err == nil {
+		exe = resolved
+	}
+	beside := filepath.Join(filepath.Dir(exe), "umu-run")
+	if st, err := os.Stat(beside); err == nil && !st.IsDir() {
+		return beside
+	}
+	return "umu-run"
+}
 
 // GameLoop runs `umu-run <exe>` and relaunches it on every exit,
 // unconditionally, until Stop is called -- the user's explicit choice: any
@@ -14,7 +39,8 @@ import (
 // deliberate stop (Ctrl+Q, or gamescope tearing the whole process tree
 // down on window close, which takes this process with it).
 type GameLoop struct {
-	exe string
+	exe        string
+	umuRunPath string
 
 	mu      sync.Mutex
 	cmd     *exec.Cmd
@@ -22,7 +48,7 @@ type GameLoop struct {
 }
 
 func NewGameLoop(exe string) *GameLoop {
-	return &GameLoop{exe: exe}
+	return &GameLoop{exe: exe, umuRunPath: resolveUmuRun()}
 }
 
 func (g *GameLoop) Run() {
@@ -34,8 +60,8 @@ func (g *GameLoop) Run() {
 		}
 		g.mu.Unlock()
 
-		logf("launching umu-run %s", g.exe)
-		cmd := exec.Command("umu-run", g.exe)
+		logf("launching %s %s", g.umuRunPath, g.exe)
+		cmd := exec.Command(g.umuRunPath, g.exe)
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 		cmd.Env = os.Environ()

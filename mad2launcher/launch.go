@@ -36,9 +36,15 @@ func launchLinux(inst Install, s InstallSettings) ([]string, error) {
 	if err != nil {
 		return nil, fmt.Errorf("gamescope not found on PATH: %w", err)
 	}
-	if _, err := exec.LookPath("umu-run"); err != nil {
-		return nil, fmt.Errorf("umu-run not found on PATH: %w", err)
-	}
+	// No hard umu-run-on-PATH check here (unlike gamescope, which has no
+	// portable distribution to bundle and is always a real system
+	// dependency) -- buildInnerLaunchCommand's normal path goes through
+	// mad2relauncher, which resolves its own bundled copy first (see
+	// mad2relauncher/gameloop.go's resolveUmuRun, and tools/package.sh's
+	// mad2relauncher_linux staging); only the "mad2relauncher couldn't be
+	// resolved at all" fallback below ever falls back to a bare "umu-run"
+	// relying on PATH, and that failing is a natural, clearly-surfaced
+	// exec error at that point rather than something worth pre-flighting.
 
 	protonPath, err := ResolveProtonPath(s.ProtonPath)
 	if err != nil {
@@ -111,31 +117,38 @@ func launchLinux(inst Install, s InstallSettings) ([]string, error) {
 }
 
 // buildInnerLaunchCommand resolves what gamescope should run inside itself,
-// mirroring the justfile's _play recipe: mad2relauncher (built on demand via
-// `go build`, same as mad2rando5 -- see build_native.go), which wraps
-// umu-run itself and additionally handles crash-relaunch, SM64/Jak1
-// orchestration, and background music/podcast supervision (mad2music --
-// see CLAUDE.md's "Native Linux companion processes" section). Falls back
-// to running `umu-run <exe>` directly (the launcher's old behavior -- no
-// crash-relaunch, no SM64/Jak1, no music) if mad2relauncher can't be built,
-// so "Launch Game" still works without a Go toolchain on PATH; that failure
-// and any music-build failure are returned as non-fatal warnings rather than
-// blocking the launch.
+// mirroring the justfile's _play recipe: a prebuilt mad2relauncher (see
+// ResolveMad2Relauncher in build_native.go -- this launcher never builds it
+// itself), which wraps umu-run itself and additionally handles
+// crash-relaunch, SM64/Jak1 orchestration, and background music/podcast
+// supervision (mad2music -- see CLAUDE.md's "Native Linux companion
+// processes" section). Falls back to running `umu-run <exe>` directly (the
+// launcher's old behavior -- no crash-relaunch, no SM64/Jak1, no music) if
+// no prebuilt mad2relauncher binary can be found, so "Launch Game" still
+// works without it; that and any missing-music warning are returned as
+// non-fatal warnings rather than blocking the launch.
 func buildInnerLaunchCommand(repoRoot string, inst Install, s InstallSettings) (string, []string, []string) {
 	var warnings []string
 
-	relauncherPath, err := ensureGoBinaryBuilt(filepath.Join(repoRoot, "mad2relauncher"), "main.go", goBinaryName("mad2relauncher"), false)
+	relauncherPath, err := ResolveMad2Relauncher(repoRoot)
 	if err != nil {
-		warnings = append(warnings, fmt.Sprintf("Couldn't build mad2relauncher, launching without crash-relaunch/SM64/Jak1/music support: %v", err))
+		warnings = append(warnings, fmt.Sprintf("mad2relauncher %v, launching without crash-relaunch/SM64/Jak1/music support (run `just build-relauncher`, or install the mad2relauncher package via the Mod Installer)", err))
 		return "umu-run", []string{inst.Exe}, warnings
 	}
 
+	// Resolved the same way "Build Games" resolves where it builds TO (see
+	// GamesRoot in build_native.go) -- a packaged release ships extern/
+	// alongside the launcher binary itself, not under repoRoot/extern (which
+	// may not exist at all if the game install lives somewhere else
+	// entirely).
+	gamesRoot := GamesRoot(repoRoot)
+
 	var relArgs []string
-	sm64Path := filepath.Join(repoRoot, "extern", "sm64ex-alo", "build", "us_pc", "sm64.us.f3dex2e")
+	sm64Path := sm64LinuxBinPath(gamesRoot)
 	if fileExists(sm64Path) {
 		relArgs = append(relArgs, "-sm64-path", sm64Path)
 	} else {
-		warnings = append(warnings, fmt.Sprintf("SM64Challenge disabled: %s not found (run `just build-sm64-linux`, or the equivalent from this launcher, with your own ROM first)", sm64Path))
+		warnings = append(warnings, fmt.Sprintf("SM64Challenge disabled: %s not found (build it from the \"Build Games\" page, or run `just build-sm64-linux`, with your own ROM first)", sm64Path))
 	}
 
 	// extern/jak-project, NOT the old external ~/jak1nolauncher sibling --
@@ -144,11 +157,11 @@ func buildInnerLaunchCommand(repoRoot string, inst Install, s InstallSettings) (
 	// source ever existed on disk, unlike sm64ex-alo). gk lives under
 	// build/game/ (CMake's own output layout), built via `just
 	// build-jak1-linux` from a user-supplied ISO.
-	jak1Dir := filepath.Join(repoRoot, "extern", "jak-project")
-	if fileExists(filepath.Join(jak1Dir, "build", "game", "gk")) {
+	jak1Dir := filepath.Join(gamesRoot, "extern", "jak-project")
+	if fileExists(jak1LinuxBinPath(gamesRoot)) {
 		relArgs = append(relArgs, "-jak1-dir", jak1Dir)
 	} else {
-		warnings = append(warnings, fmt.Sprintf("JakChallenge disabled: %s not found (run `just build-jak1-linux` with your own ISO first)", filepath.Join(jak1Dir, "build", "game", "gk")))
+		warnings = append(warnings, fmt.Sprintf("JakChallenge disabled: %s not found (build it from the \"Build Games\" page, or run `just build-jak1-linux`, with your own ISO first)", jak1LinuxBinPath(gamesRoot)))
 	}
 
 	if !s.MusicDisabled {
@@ -156,11 +169,10 @@ func buildInnerLaunchCommand(repoRoot string, inst Install, s InstallSettings) (
 		if audioDir == "" {
 			audioDir = filepath.Join(repoRoot, "mad2music", "audio")
 		}
-		musicPath := musicBinPath(repoRoot)
-		if fileExists(musicPath) {
+		if musicPath, err := ResolveMad2Music(repoRoot); err == nil {
 			relArgs = append(relArgs, "-music-path", musicPath, "-music-audio-dir", audioDir)
 		} else {
-			warnings = append(warnings, fmt.Sprintf("Background music disabled: %s not found (run `just build-music-linux` first)", musicPath))
+			warnings = append(warnings, fmt.Sprintf("Background music disabled: mad2music %v (run `just build-music-linux`, or install the mad2music package via the Mod Installer)", err))
 		}
 	}
 
@@ -176,9 +188,38 @@ func splitRes(res string) (w, h string) {
 	return "1280", "720"
 }
 
-// ResolveProtonPath mirrors the justfile's own _resolve_proton recipe:
-// use configured if it exists, else search Steam's compatibilitytools.d /
-// steamapps/common for the first GE-Proton*/Proton* install.
+// steamRootCandidates returns every location this repo knows Steam might
+// actually live, in priority order -- NOT just ~/.local/share/Steam. That
+// was the only location ever checked until a user reported Proton not
+// being found at all despite having it installed, working, and used by the
+// older ../mad2mod tool (which launches games through Steam itself rather
+// than invoking umu-run directly, so it never needed to independently
+// rediscover Proton's on-disk location the way this repo does): they
+// simply didn't have a ~/.local/share/Steam directory at all -- Steam was
+// installed via Flatpak instead. ~/.steam/root and ~/.steam/steam are
+// symlinks Steam itself maintains pointing at wherever its real data
+// directory actually is (the closest thing to an authoritative answer,
+// regardless of native/custom-prefix/relocated installs); ~/.local/share/
+// Steam is kept as the common-case fallback; the Flatpak and Snap paths
+// cover the two most common non-native packaging cases on Linux.
+func steamRootCandidates(home string) []string {
+	return []string{
+		filepath.Join(home, ".steam/root"),
+		filepath.Join(home, ".steam/steam"),
+		// Debian's own `steam` package's real data directory -- confirmed
+		// directly from a user's machine where neither .steam/root nor
+		// .steam/steam resolved to it as a symlink.
+		filepath.Join(home, ".steam/debian-installation"),
+		filepath.Join(home, ".local/share/Steam"),
+		filepath.Join(home, ".var/app/com.valvesoftware.Steam/.local/share/Steam"),
+		filepath.Join(home, "snap/steam/common/.local/share/Steam"),
+	}
+}
+
+// ResolveProtonPath mirrors the justfile's own _resolve_proton recipe: use
+// configured if it exists, else search every steamRootCandidates root's
+// compatibilitytools.d / steamapps/common for the first GE-Proton*/Proton*
+// install found.
 func ResolveProtonPath(configured string) (string, error) {
 	if configured != "" && dirExists(configured) {
 		return configured, nil
@@ -190,26 +231,37 @@ func ResolveProtonPath(configured string) (string, error) {
 	}
 
 	var candidates []string
-	for _, searchDir := range []string{
-		filepath.Join(home, ".local/share/Steam/compatibilitytools.d"),
-		filepath.Join(home, ".local/share/Steam/steamapps/common"),
-	} {
-		entries, err := os.ReadDir(searchDir)
-		if err != nil {
-			continue
-		}
-		for _, e := range entries {
-			if !e.IsDir() {
+	for _, steamRoot := range steamRootCandidates(home) {
+		var found []string
+		for _, searchDir := range []string{
+			filepath.Join(steamRoot, "compatibilitytools.d"),
+			filepath.Join(steamRoot, "steamapps/common"),
+		} {
+			entries, err := os.ReadDir(searchDir)
+			if err != nil {
 				continue
 			}
-			name := e.Name()
-			if strings.HasPrefix(name, "GE-Proton") || strings.HasPrefix(name, "Proton") {
-				candidates = append(candidates, filepath.Join(searchDir, name))
+			for _, e := range entries {
+				if !e.IsDir() {
+					continue
+				}
+				name := e.Name()
+				if strings.HasPrefix(name, "GE-Proton") || strings.HasPrefix(name, "Proton") {
+					found = append(found, filepath.Join(searchDir, name))
+				}
 			}
+		}
+		if len(found) > 0 {
+			// Stop at the first Steam root that actually has any Proton
+			// install -- later roots in the list are lower-priority
+			// fallbacks (e.g. Flatpak), not additional places to merge
+			// results from.
+			candidates = found
+			break
 		}
 	}
 	if len(candidates) == 0 {
-		return "", fmt.Errorf("Proton path %q not found, and no GE-Proton*/Proton* install found under Steam's compatibilitytools.d or steamapps/common", configured)
+		return "", fmt.Errorf("Proton path %q not found, and no GE-Proton*/Proton* install found under any known Steam location (~/.steam/root, ~/.steam/steam, ~/.local/share/Steam, or the Flatpak/Snap equivalents)", configured)
 	}
 	sort.Strings(candidates)
 	return candidates[0], nil

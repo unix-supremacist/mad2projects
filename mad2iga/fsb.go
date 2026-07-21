@@ -426,6 +426,311 @@ func decodePCM16LE(data []byte) []int16 {
 	return out
 }
 
+// --- IMA ADPCM ("XBOX IMA" FSB variant) ENCODING ---
+//
+// The mathematical inverse of decodeXboxIMA/imaExpandNibble above. Standard
+// IMA4 encode: for each sample, quantize the delta from the running
+// predictor into a 4-bit code via the textbook bit-by-bit magnitude
+// comparison against the current step size (the reference algorithm found
+// in essentially every public IMA ADPCM encoder — Microsoft's, the
+// "cr.c"/"dvi_adpcm" reference implementation, etc.), then advance the
+// predictor/step-index state by feeding that exact code back through
+// imaExpandNibble — the *same* function decodeXboxIMA uses to consume it.
+// Delegating the state update to imaExpandNibble (rather than duplicating
+// its clamping/index-table logic here) is deliberate: it's what guarantees
+// the encoder's state transition after each sample is bit-for-bit identical
+// to what decoding that same nibble back will compute, so a round-trip
+// (encode then decode) can't silently drift out of sync between the two
+// implementations.
+
+// imaEncodeNibble picks the 4-bit code that best encodes `sample` given the
+// current predictor/step-index state (*hist1, *stepIndex), then advances
+// that state via imaExpandNibble exactly as a decoder would when consuming
+// the returned code. See the package-level comment above for why.
+func imaEncodeNibble(sample int16, hist1 *int32, stepIndex *int32) int32 {
+	step := imaStepTable[*stepIndex]
+	diff := int32(sample) - *hist1
+
+	code := int32(0)
+	if diff < 0 {
+		code = 8
+		diff = -diff
+	}
+
+	// Bit-by-bit magnitude comparison, mirroring the decoder's own
+	// delta = (step>>3) [+step>>2] [+step>>1] [+step] construction: whichever
+	// bits would make the decoded delta come closest to (without exceeding)
+	// the true diff get set here.
+	t := step
+	if diff >= t {
+		code |= 4
+		diff -= t
+	}
+	t >>= 1
+	if diff >= t {
+		code |= 2
+		diff -= t
+	}
+	t >>= 1
+	if diff >= t {
+		code |= 1
+	}
+
+	imaExpandNibble(code, hist1, stepIndex) // advance state identically to decode
+	return code
+}
+
+// encodeXboxIMAMono encodes mono PCM16 to the "XBOX IMA" FSB frame layout —
+// the exact inverse framing of decodeXboxIMA's mono path (see
+// docs/AUDIO_FORMAT.md's "XBOX IMA frame layout" section): fixed 0x24-byte
+// frames, +0x00 s16 hist1 (the predictor BEFORE this frame's samples, not
+// itself an emitted sample), +0x02 u8 step_index, +0x03 u8 reserved (0),
+// +0x04 32 bytes / 64 nibbles (low nibble first) = 64 samples/frame.
+//
+// The very first frame starts from predictor=0, step_index=0 — the standard
+// IMA-ADPCM starting convention, confirmed against this codebase's own
+// decoder output for a real MAD2 sample (see fsb_test.go's
+// TestFirstFrameStartsAtZero and docs/AUDIO_FORMAT.md's encode-path section).
+//
+// If len(pcm) isn't an exact multiple of 64, the final frame is padded with
+// silence (0) — matches decodeXboxIMA's own "only whole 36-byte frames"
+// handling and mirrors the trailing-pad slack already observed in real MAD2
+// sample data (see docs/AUDIO_FORMAT.md's "4 bytes over" note).
+//
+// Scope: mono only — matches decodeXboxIMA's own verified scope exactly; the
+// 2-channel interleaved layout is unexercised on the decode side too and not
+// attempted here.
+func encodeXboxIMAMono(pcm []int16) []byte {
+	const blockSamples = 64
+	numFrames := (len(pcm) + blockSamples - 1) / blockSamples
+	if numFrames == 0 {
+		return nil
+	}
+	out := make([]byte, numFrames*imaBlockSize)
+
+	hist1 := int32(0)
+	stepIndex := int32(0)
+
+	for f := 0; f < numFrames; f++ {
+		frame := out[f*imaBlockSize : (f+1)*imaBlockSize]
+
+		// Frame header records the predictor/step-index state as it stands
+		// BEFORE this frame's samples are encoded — matches decodeXboxIMA,
+		// which seeds its own hist/step from these same header bytes and
+		// then applies the frame's nibbles starting there.
+		binary.LittleEndian.PutUint16(frame[0:2], uint16(int16(hist1)))
+		frame[2] = byte(stepIndex)
+		frame[3] = 0 // reserved
+
+		start := f * blockSamples
+		for i := 0; i < blockSamples; i++ {
+			var sample int16
+			if idx := start + i; idx < len(pcm) {
+				sample = pcm[idx]
+			} // else: silence-pad the final partial frame
+			code := imaEncodeNibble(sample, &hist1, &stepIndex)
+			byteIdx := 4 + i/2
+			if i%2 == 0 {
+				frame[byteIdx] = byte(code & 0xF)
+			} else {
+				frame[byteIdx] |= byte(code&0xF) << 4
+			}
+		}
+	}
+	return out
+}
+
+// RepackFSB3 re-encodes `pcm` (mono PCM16) and splices it into a copy of
+// `original`'s own FSB3 bytes, producing a new, valid FSB3 container. Every
+// header byte is carried through from `original` UNCHANGED — including the
+// fields ParseFSB3 doesn't even bother extracting into FSBSample
+// (MinDistance/MaxDistance/VarFreq/VarVol/VarPan, the 8 unexplained trailing
+// bytes per docs/AUDIO_FORMAT.md) — except:
+//   - the sample header entry's LengthSamples (+0x20, recomputed as
+//     framecount*64) and LengthCompressedBytes (+0x24, recomputed as
+//     framecount*36)
+//   - the main header's DataSize (+0x0C, recomputed to match)
+//
+// This patches the original bytes in place rather than reserializing the
+// header from scratch — the same "preserve everything except what actually
+// changed" discipline EncodeInsert (texture.go) already uses for `.texs`,
+// and it's what guarantees the open/unexplained fields survive a repack
+// byte-for-byte instead of being silently zeroed or reconstructed wrong.
+//
+// Scope, matching decodeXboxIMA/encodeXboxIMAMono exactly: single-sample
+// (NumSamples==1 — true for 100% of MAD2's real corpus, see
+// docs/AUDIO_FORMAT.md), mono, FSOUND_IMAADPCM only. Anything outside that
+// is rejected with a clear error rather than silently mishandled.
+func RepackFSB3(original []byte, pcm []int16) ([]byte, error) {
+	if !IsFSB3(original) {
+		return nil, fmt.Errorf("RepackFSB3: not an FSB3 file (bad magic)")
+	}
+	if len(original) < fsbMainHeaderSize {
+		return nil, fmt.Errorf("RepackFSB3: file too small (%d bytes) for FSB3 main header", len(original))
+	}
+
+	numSamples := int32(binary.LittleEndian.Uint32(original[4:8]))
+	if numSamples != 1 {
+		return nil, fmt.Errorf("RepackFSB3: only single-sample FSB3 containers are supported (got NumSamples=%d) -- matches 100%% of MAD2's real corpus, see docs/AUDIO_FORMAT.md", numSamples)
+	}
+
+	headerSize := int(binary.LittleEndian.Uint32(original[8:12]))
+	headerAreaStart := fsbMainHeaderSize
+	headerAreaEnd := headerAreaStart + headerSize
+	if headerAreaEnd > len(original) || headerAreaEnd < headerAreaStart {
+		return nil, fmt.Errorf("RepackFSB3: sample header area (%d bytes) exceeds file size %d", headerSize, len(original))
+	}
+	if headerAreaEnd < headerAreaStart+2 {
+		return nil, fmt.Errorf("RepackFSB3: sample header area too small (%d bytes)", headerSize)
+	}
+
+	entrySize := int(binary.LittleEndian.Uint16(original[headerAreaStart : headerAreaStart+2]))
+	if headerAreaStart+entrySize > headerAreaEnd {
+		return nil, fmt.Errorf("RepackFSB3: sample header entry (%d bytes) exceeds the %d-byte header area", entrySize, headerSize)
+	}
+	if entrySize < 0x40 {
+		return nil, fmt.Errorf("RepackFSB3: sample header entry too small (%d bytes) to contain Mode/NumChannels fields", entrySize)
+	}
+	// entrySize doesn't always exactly fill headerAreaEnd: real MAD2 samples
+	// come in two entry-length variants (the "extended" 0x58-byte one, and a
+	// shorter 0x50-byte one lacking nothing structurally different in the
+	// fields this function actually reads/patches -- LengthSamples/
+	// LengthCompressedBytes/Mode/NumChannels are at the same fixed offsets
+	// from entry start in both), and the shorter variant can leave a few
+	// trailing zero-padding bytes inside the declared header area, past the
+	// entry's own self-reported size (confirmed against a real sample,
+	// db_section2_hit7_marty.snds: entrySize=0x50/80 but headerSize=88, 8
+	// trailing zero bytes). ParseFSB3 already tolerates this (it never
+	// asserts pos==headerAreaEnd for a single-sample file); RepackFSB3
+	// preserves those padding bytes unchanged too, since it copies the
+	// WHOLE original[:headerAreaEnd] range below rather than just entrySize
+	// bytes of it.
+
+	entry := original[headerAreaStart:headerAreaEnd]
+	mode := binary.LittleEndian.Uint32(entry[0x30:0x34])
+	numChannels := int16(binary.LittleEndian.Uint16(entry[0x3E:0x40]))
+	if numChannels == 0 {
+		numChannels = 1
+	}
+	if mode&FSoundImaAdpcm == 0 {
+		return nil, fmt.Errorf("RepackFSB3: sample Mode 0x%08X is not FSOUND_IMAADPCM -- only the IMA-ADPCM encode path is implemented", mode)
+	}
+	if numChannels != 1 {
+		return nil, fmt.Errorf("RepackFSB3: sample has %d channels -- only mono re-encoding is implemented (matches decodeXboxIMA's own verified scope)", numChannels)
+	}
+
+	encoded := encodeXboxIMAMono(pcm)
+	numFrames := len(encoded) / imaBlockSize
+	lengthSamples := uint32(numFrames) * 64
+	compressedBytes := uint32(len(encoded))
+
+	out := make([]byte, headerAreaEnd+len(encoded))
+	copy(out, original[:headerAreaEnd]) // main header + sample header entry, byte-for-byte from original
+	binary.LittleEndian.PutUint32(out[12:16], compressedBytes)                 // main header DataSize
+	binary.LittleEndian.PutUint32(out[headerAreaStart+0x20:], lengthSamples)   // entry LengthSamples
+	binary.LittleEndian.PutUint32(out[headerAreaStart+0x24:], compressedBytes) // entry LengthCompressedBytes
+	copy(out[headerAreaEnd:], encoded)
+
+	return out, nil
+}
+
+// ReadPCM16WAV parses a 16-bit PCM RIFF/WAVE file — the inverse of
+// WritePCM16WAV. Chunks are walked generically (not assumed at fixed
+// offsets) so this tolerates minor real-world variation a real editor might
+// produce when saving an edited copy of a WritePCM16WAV-produced file (e.g.
+// an inserted "LIST"/"fact" chunk, a "fmt " chunk padded past 16 bytes) —
+// this matters because parsing an edited WAV, not just one this package
+// wrote itself, is the actual path RepackSnds/mad2tool exercises.
+func ReadPCM16WAV(r io.Reader) (pcm []int16, channels, sampleRate int, err error) {
+	data, err := io.ReadAll(r)
+	if err != nil {
+		return nil, 0, 0, err
+	}
+	if len(data) < 12 || string(data[0:4]) != "RIFF" || string(data[8:12]) != "WAVE" {
+		return nil, 0, 0, fmt.Errorf("not a RIFF/WAVE file")
+	}
+
+	pos := 12
+	var fmtFound, dataFound bool
+	var audioFormat, bitsPerSample uint16
+	var dataBytes []byte
+
+	for pos+8 <= len(data) {
+		chunkID := string(data[pos : pos+4])
+		chunkSize := int(binary.LittleEndian.Uint32(data[pos+4 : pos+8]))
+		chunkStart := pos + 8
+		chunkEnd := chunkStart + chunkSize
+		if chunkEnd > len(data) || chunkEnd < chunkStart {
+			chunkEnd = len(data)
+		}
+
+		switch chunkID {
+		case "fmt ":
+			if chunkEnd-chunkStart < 16 {
+				return nil, 0, 0, fmt.Errorf("fmt chunk too small (%d bytes)", chunkEnd-chunkStart)
+			}
+			fc := data[chunkStart:chunkEnd]
+			audioFormat = binary.LittleEndian.Uint16(fc[0:2])
+			channels = int(binary.LittleEndian.Uint16(fc[2:4]))
+			sampleRate = int(binary.LittleEndian.Uint32(fc[4:8]))
+			bitsPerSample = binary.LittleEndian.Uint16(fc[14:16])
+			fmtFound = true
+		case "data":
+			dataBytes = data[chunkStart:chunkEnd]
+			dataFound = true
+		}
+
+		pos = chunkEnd
+		if chunkSize%2 == 1 { // chunks are word-aligned; odd-sized chunks have a pad byte
+			pos++
+		}
+	}
+
+	if !fmtFound {
+		return nil, 0, 0, fmt.Errorf("no fmt chunk found")
+	}
+	if !dataFound {
+		return nil, 0, 0, fmt.Errorf("no data chunk found")
+	}
+	if audioFormat != 1 {
+		return nil, 0, 0, fmt.Errorf("unsupported WAV audio format %d (only PCM=1 supported)", audioFormat)
+	}
+	if bitsPerSample != 16 {
+		return nil, 0, 0, fmt.Errorf("unsupported bits-per-sample %d (only 16-bit PCM supported)", bitsPerSample)
+	}
+	if channels < 1 {
+		channels = 1
+	}
+
+	n := len(dataBytes) / 2
+	pcm = make([]int16, n)
+	for i := 0; i < n; i++ {
+		pcm[i] = int16(binary.LittleEndian.Uint16(dataBytes[i*2:]))
+	}
+	return pcm, channels, sampleRate, nil
+}
+
+// RepackSnds is the one-call convenience counterpart to ExtractSnds: given
+// the ORIGINAL `.snds` file's raw bytes (needed as the header template — see
+// RepackFSB3) and an edited WAV's raw bytes, produces new `.snds` bytes with
+// the edited audio re-encoded in. Only handles the FSB3 case (mono
+// IMA-ADPCM); the Ogg-Vorbis-minority `.snds` files need no encoder at all
+// (IsOggVorbis + a plain rename is already lossless) and should not be
+// passed here.
+func RepackSnds(originalSndsData []byte, wavData []byte) ([]byte, error) {
+	if !IsFSB3(originalSndsData) {
+		return nil, fmt.Errorf("RepackSnds: original .snds is not FSB3 (Ogg-Vorbis .snds files need no encoder -- see IsOggVorbis)")
+	}
+	pcm, channels, _, err := ReadPCM16WAV(bytes.NewReader(wavData))
+	if err != nil {
+		return nil, fmt.Errorf("RepackSnds: read edited wav: %w", err)
+	}
+	if channels != 1 {
+		return nil, fmt.Errorf("RepackSnds: edited wav has %d channels, only mono re-encoding is implemented", channels)
+	}
+	return RepackFSB3(originalSndsData, pcm)
+}
+
 // WritePCM16WAV writes a minimal canonical 16-bit PCM RIFF/WAVE file.
 func WritePCM16WAV(w io.Writer, pcm []int16, channels, sampleRate int) error {
 	if channels < 1 {

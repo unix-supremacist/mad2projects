@@ -26,6 +26,10 @@ type ObjectGraph struct {
 	ClassNames []string
 	Sec0Off    uint32
 	Sec1Off    uint32
+
+	// stringPool caches StringPool()'s result — built lazily since most
+	// callers (objects-dump, etc.) never need it.
+	stringPool []string
 }
 
 // ObjectRef identifies one object instance found in the graph.
@@ -381,6 +385,86 @@ func (g *ObjectGraph) FullWalk() (map[uint32]ObjectRef, error) {
 	return visited, nil
 }
 
+// stringPoolMagicGap is the same heuristic offset mad2iga/level.go's older
+// coordinate/name scanner uses to find where Section 0's string pool
+// "really" starts (skipping a leading region that isn't plain
+// null-terminated strings — see docs/CLASS_SCHEMA.md's naming
+// investigation for the history: originally reverse-engineered against
+// WaterholeBLD, not derived from a parsed header field, and known to not
+// generalize perfectly to every level). Duplicated here (not imported from
+// level.go) since ObjectGraph and level.go's scanner are independent
+// entry points with no shared type today.
+const stringPoolMagicGap = 0xA840
+
+// StringPool lazily builds and caches a flat, sequentially-ordered list of
+// every null-terminated string in Section 0's string pool (starting at the
+// same heuristic +0xA840 boundary as level.go's scanner), with the same
+// 3-entry synthetic prefix level.go's own scanner prepends
+// (`"ttr", "OpMoveFrom", "igHandleList"`) — required for ResolveStringOrdinal
+// below to reproduce the same indexing.
+//
+// This is the *same* mechanism CLASS_SCHEMA.md's naming investigation
+// found unreliable for ActorInfo's own per-instance display name — but
+// confirmed (this session, see docs/SCRIPT_FORMAT.md) to correctly resolve
+// TFBScriptInfo's OpCreateVariable.varName to real, sensible variable names
+// (e.g. "total song beats", "combo counter") against a real VolcanoRave
+// level. Do not assume it resolves every ordinal-shaped field correctly —
+// e.g. ScriptSet's own inherited igNamedObject `_name` field reads a
+// similarly small-integer ordinal that, through this exact same table,
+// resolves to *unrelated* level-manifest filenames, not a display name.
+// Confirmed working for OpCreateVariable.varName only; treat any other
+// field skeptically until independently checked the same way.
+func (g *ObjectGraph) StringPool() []string {
+	if g.stringPool != nil {
+		return g.stringPool
+	}
+	list := []string{"ttr", "OpMoveFrom", "igHandleList"}
+	if len(g.Sections) == 0 {
+		g.stringPool = list
+		return list
+	}
+	sec0Off := g.Sections[0].Offset
+	sec0Size := g.Sections[0].Size
+	if int(sec0Off)+0x30 > len(g.Data) {
+		g.stringPool = list
+		return list
+	}
+	strPoolOff := binary.LittleEndian.Uint32(g.Data[sec0Off+0x2C:])
+	realStart := sec0Off + strPoolOff + stringPoolMagicGap
+	poolEnd := sec0Off + sec0Size
+	if realStart >= poolEnd || poolEnd > uint32(len(g.Data)) {
+		g.stringPool = list
+		return list
+	}
+	pool := g.Data[realStart:poolEnd]
+	idx := 0
+	for idx < len(pool) {
+		end := idx
+		for end < len(pool) && pool[end] != 0 {
+			end++
+		}
+		if end > idx {
+			list = append(list, string(pool[idx:end]))
+		}
+		idx = end + 1
+	}
+	g.stringPool = list
+	return list
+}
+
+// ResolveStringOrdinal resolves a small integer (as read raw from a field
+// like OpCreateVariable.varName) to a string via StringPool, using the same
+// `list[ordinal+1]` indexing level.go's scanner uses. See StringPool's docs
+// for which fields this is actually confirmed correct for.
+func (g *ObjectGraph) ResolveStringOrdinal(ordinal uint32) (string, bool) {
+	pool := g.StringPool()
+	idx := int(ordinal) + 1
+	if idx < 0 || idx >= len(pool) {
+		return "", false
+	}
+	return pool[idx], true
+}
+
 // FieldValue reads a known field of obj using the verified Wii-derived
 // schema (see schema.go / ../docs/CLASS_SCHEMA.md). Returns false if the
 // class or field isn't in the schema, or the field's offset is ambiguous.
@@ -396,9 +480,20 @@ func (g *ObjectGraph) FieldValue(obj ObjectRef, fieldName string) (interface{}, 
 	isFloat := len(info.Kind) == 1 && info.Kind[0] == "float"
 	isMatrix := len(info.Kind) == 1 && info.Kind[0] == "matrix44f"
 	isPtr := len(info.Kind) == 1 && info.Kind[0] == "ptr"
+	isStringOrdinal := len(info.Kind) == 1 && info.Kind[0] == "string_ordinal"
 
 	if fieldOff, ok := info.FieldOffset(); ok {
 		addr := obj.Addr + uint32(fieldOff)
+		if isStringOrdinal {
+			raw, ok := g.ReadUint32(addr)
+			if !ok {
+				return nil, false
+			}
+			if s, ok := g.ResolveStringOrdinal(raw); ok {
+				return s, true
+			}
+			return raw, true
+		}
 		if isPtr {
 			raw, ok := g.ReadUint32(addr)
 			if !ok {
@@ -452,4 +547,82 @@ func (g *ObjectGraph) FieldValue(obj ObjectRef, fieldName string) (interface{}, 
 		}
 	}
 	return nil, false
+}
+
+// WriteField overwrites the bytes of a known field on obj, in place, in
+// g.Data — a byte-exact edit that touches nothing else in the file (IGZ
+// objects are fixed-size, so a scalar field write never needs to move
+// anything else around; see ../docs/CLASS_SCHEMA.md's "In-place field
+// editing" section).
+//
+// Two safety gates, both deliberate:
+//
+//  1. Only fields whose merged schema entry is PC-verified (Source == "pc")
+//     are writable. Wii-only offsets have already been proven wrong for at
+//     least one ActorInfo field on the PC build (see the "Major caveat" in
+//     CLASS_SCHEMA.md) — writing through an unverified offset risks
+//     silently corrupting unrelated bytes, so this returns an error instead
+//     rather than writing anything.
+//  2. Only Kind ["float"] fields (a lone float32, or the 3-float Vec3f shape
+//     FieldValue's Vec3Offset branch reads) are writable. Every other kind
+//     is refused: "ptr" fields would need a real, validated segmented
+//     pointer value pointing at another real object (not attempted here —
+//     easy to corrupt the graph); "int"/"bool"/"enum" fields have not had
+//     their actual on-disk byte width independently confirmed — e.g.
+//     CollisionInfo's isSolid/isActorSurface/interactsWithWorld sit only 1
+//     byte apart in the schema, meaning they're genuinely single-byte
+//     fields, and blindly writing a 4-byte word at one of those offsets
+//     would clobber its two neighbors. float32 has no such ambiguity (IEEE
+//     754 single precision is unambiguously 4 bytes), which is why it's the
+//     only kind trusted here.
+//
+// value must be float32 for a scalar field, or [3]float32 for a Vec3f
+// field. Returns the absolute file offset and byte count actually written.
+func (g *ObjectGraph) WriteField(obj ObjectRef, fieldName string, value interface{}) (addr uint32, n int, err error) {
+	fields, ok := ClassSchema(obj.ClassName)
+	if !ok {
+		return 0, 0, fmt.Errorf("no known schema for class %q", obj.ClassName)
+	}
+	info, ok := fields[fieldName]
+	if !ok {
+		return 0, 0, fmt.Errorf("class %q has no known field %q", obj.ClassName, fieldName)
+	}
+	if info.Source != "pc" {
+		return 0, 0, fmt.Errorf("field %s.%s is not PC-verified (source=%q) — refusing to write a possibly-wrong offset, see docs/CLASS_SCHEMA.md's Major caveat", obj.ClassName, fieldName, info.Source)
+	}
+	isFloat := len(info.Kind) == 1 && info.Kind[0] == "float"
+	if !isFloat {
+		return 0, 0, fmt.Errorf("field %s.%s has kind %v, not writable (only plain \"float\" fields are — see WriteField's doc comment)", obj.ClassName, fieldName, info.Kind)
+	}
+
+	if base, stride, ok := info.Vec3Offset(); ok {
+		v3, isVec3 := value.([3]float32)
+		if !isVec3 {
+			return 0, 0, fmt.Errorf("field %s.%s is a Vec3f — value must be [3]float32, got %T", obj.ClassName, fieldName, value)
+		}
+		addr = obj.Addr + uint32(base)
+		for i := 0; i < 3; i++ {
+			off := addr + uint32(i*stride)
+			if int(off)+4 > len(g.Data) {
+				return 0, 0, fmt.Errorf("write of %s.%s out of bounds at 0x%X", obj.ClassName, fieldName, off)
+			}
+			binary.LittleEndian.PutUint32(g.Data[off:], math.Float32bits(v3[i]))
+		}
+		return addr, 12, nil
+	}
+
+	fieldOff, ok := info.FieldOffset()
+	if !ok {
+		return 0, 0, fmt.Errorf("field %s.%s has an ambiguous offset (disagreeing accessors, not a clean Vec3f either) — not writable", obj.ClassName, fieldName)
+	}
+	f32, isF32 := value.(float32)
+	if !isF32 {
+		return 0, 0, fmt.Errorf("field %s.%s is a scalar float — value must be float32, got %T", obj.ClassName, fieldName, value)
+	}
+	addr = obj.Addr + uint32(fieldOff)
+	if int(addr)+4 > len(g.Data) {
+		return 0, 0, fmt.Errorf("write of %s.%s out of bounds at 0x%X", obj.ClassName, fieldName, addr)
+	}
+	binary.LittleEndian.PutUint32(g.Data[addr:], math.Float32bits(f32))
+	return addr, 4, nil
 }

@@ -25,8 +25,11 @@ lighter-weight orientation on top of it.
 entry point runs (via a Wine DLL override) and which in turn loads every
 `.dll` in `mods/`. Everything else at the repo root next to `modloader/` —
 `mad2xinput`, `mad2config`, `mad2effects`, `mad2shadowfix`,
-`mad2graphicseffectmod`, `mad2chaosmod`, `mad2companionmod`, and roughly a
-dozen more — is one mod, one CMake target, one DLL. Roughly:
+`mad2graphicseffectmod`, `mad2chaosmod`, `mad2companionmod`, and around twenty
+more — is one mod, one CMake target, one DLL (roughly 25 in total, including
+two shared hooking/rendering-primitive DLLs, `mad2hookutil`/`mad2textrenderer`,
+that other mods resolve internally rather than a player ever interacting with
+directly). Roughly:
 
 - **File/IO redirection**: asset loading, save loading, level redirection.
 - **Shared APIs**: a controller-input hook, a config-file reader/writer, and

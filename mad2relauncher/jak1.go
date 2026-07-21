@@ -3,14 +3,45 @@ package main
 import (
 	"encoding/binary"
 	"fmt"
+	"io/fs"
 	"math/rand"
 	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"sync"
 	"syscall"
 )
+
+// jak1LibraryPath returns a LD_LIBRARY_PATH value covering every directory
+// under jak1Dir/build that contains a .so file -- gk dynamically links
+// against a couple dozen of these (libcompiler.so, libdecomp.so, third-
+// party/fmt, third-party/sqlite3, ...), scattered one per CMake target
+// subdirectory. Walked fresh each launch rather than hardcoded, since which
+// subdirectories exist is a CMakeLists.txt implementation detail that could
+// drift; a failed walk just yields an empty result, so LD_LIBRARY_PATH
+// silently falls back to gk's own (possibly-broken) RUNPATH rather than
+// erroring the launch outright.
+func jak1LibraryPath(jak1Dir string) string {
+	root := filepath.Join(jak1Dir, "build")
+	seen := map[string]bool{}
+	var dirs []string
+	_ = filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() {
+			return nil
+		}
+		if strings.Contains(d.Name(), ".so") {
+			dir := filepath.Dir(path)
+			if !seen[dir] {
+				seen[dir] = true
+				dirs = append(dirs, dir)
+			}
+		}
+		return nil
+	})
+	return strings.Join(dirs, ":")
+}
 
 // gk has no --width/--height/--fullscreen CLI flags (unlike sm64ex-alo's),
 // so it opens at a hardcoded 640x480 (game/graphics/gfx.cpp's
@@ -235,7 +266,18 @@ func (j *Jak1Controller) handleLaunch(replyAddr *net.UDPAddr) {
 	// X11 display, so it never appears inside the gamescope window at all
 	// (observed). Forcing X11 is always correct here since gamescope is
 	// itself a nested X11 compositor.
-	cmd.Env = append(os.Environ(), "SDL_VIDEODRIVER=x11")
+	// LD_LIBRARY_PATH is consulted before a binary's own baked-in RUNPATH,
+	// so this reliably finds gk's third-party .so dependencies (libcompiler
+	// .so, libdecomp.so, libfmt.so, ...) regardless of what RUNPATH ended up
+	// baked into gk at build time. That matters because gk's RUNPATH is
+	// wrong whenever it was built inside the mad2-debian distrobox (see
+	// `just build-jak1-linux`) under a path outside $HOME: distrobox only
+	// bind-mounts $HOME at the same path inside the container, so anywhere
+	// else gets a build-time RUNPATH like /run/host/<path>/... that doesn't
+	// exist when gk is later run directly on the host, as it is here
+	// (confirmed: "libcompiler.so: cannot open shared object file" without
+	// this).
+	cmd.Env = append(os.Environ(), "SDL_VIDEODRIVER=x11", "LD_LIBRARY_PATH="+jak1LibraryPath(j.jak1Dir))
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	// Pdeathsig: same defense-in-depth reasoning as music.go's copy --

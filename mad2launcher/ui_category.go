@@ -51,7 +51,14 @@ func buildCommentBlock(comment string) fyne.CanvasObject {
 			continue
 		}
 
-		link := widget.NewHyperlink(rawURL, parsed)
+		// A URL is one unbroken token with no whitespace for TextWrapWord to
+		// break at, so a long one (e.g. the ~70-char MSDN virtual-key-codes
+		// reference several mods' TestTriggerKey/ResetKey comments link to)
+		// forces the Hyperlink's -- and therefore the whole window's --
+		// minimum width out to fit it verbatim, however this page is later
+		// laid out. Truncate what's *displayed* instead; the real URL stays
+		// the actual link target (parsed, unmodified) either way.
+		link := widget.NewHyperlink(shortenURLForDisplay(rawURL), parsed)
 		if prefix := strings.TrimRight(line[:loc[0]], " "); prefix != "" {
 			pfx := widget.NewLabel(prefix)
 			pfx.TextStyle = fyne.TextStyle{Italic: true}
@@ -61,6 +68,21 @@ func buildCommentBlock(comment string) fyne.CanvasObject {
 		}
 	}
 	return container.NewVBox(rows...)
+}
+
+// shortenURLForDisplay caps a URL's displayed text at maxURLDisplayLen,
+// eliding the middle -- keeps both the scheme/host (so it's still
+// recognizable/trustworthy at a glance) and the tail (often the most
+// specific part, e.g. the actual API name in an MSDN link) visible.
+const maxURLDisplayLen = 42
+
+func shortenURLForDisplay(rawURL string) string {
+	if len(rawURL) <= maxURLDisplayLen {
+		return rawURL
+	}
+	head := maxURLDisplayLen * 3 / 5
+	tail := maxURLDisplayLen - head - 1 // -1 for the ellipsis rune itself
+	return rawURL[:head] + "…" + rawURL[len(rawURL)-tail:]
 }
 
 // autosave writes cfg to disk immediately and surfaces any error -- every
@@ -167,7 +189,7 @@ func buildConfigCategoryPage(state *AppState, section string) fyne.CanvasObject 
 	}
 
 	header := widget.NewLabelWithStyle(section, fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
-	scroll := container.NewVScroll(container.NewVBox(rows...))
+	scroll := container.NewScroll(container.NewVBox(rows...))
 
 	return container.NewBorder(header, nil, nil, nil, scroll)
 }

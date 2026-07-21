@@ -20,7 +20,8 @@ func globalArcModPath(inst Install) string {
 	return filepath.Join(inst.Dir, "Content", "Streams", "mod", "global.arc")
 }
 
-// DeployBlankGlobalArc builds mad2arc/mad2repack/mad2musicpatch if needed
+// DeployBlankGlobalArc resolves prebuilt mad2arc/mad2repack/mad2musicpatch
+// binaries (never builds them -- see ResolveMad2AssetTool/ResolveMad2MusicPatch)
 // and runs mad2musicpatch, which extracts global.arc, replaces every
 // background-music track with 1s of silence, feeds the originals into
 // mad2music's pool, and writes the patched archive to every install found
@@ -30,17 +31,17 @@ func DeployBlankGlobalArc(repoRoot string) (string, error) {
 		return "", fmt.Errorf("ffmpeg not found on PATH (needed to generate the blank replacement audio): %w", err)
 	}
 
-	mad2arcPath, err := ensureGoBinaryBuilt(filepath.Join(repoRoot, "mad2arc"), "main.go", goBinaryName("mad2arc"), false)
+	mad2arcPath, err := ResolveMad2AssetTool(repoRoot, "mad2arc")
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("mad2arc %w (run `just build-assettools`, or install the mad2assettools package via the Mod Installer)", err)
 	}
-	mad2repackPath, err := ensureGoBinaryBuilt(filepath.Join(repoRoot, "mad2repack"), "main.go", goBinaryName("mad2repack"), false)
+	mad2repackPath, err := ResolveMad2AssetTool(repoRoot, "mad2repack")
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("mad2repack %w (run `just build-assettools`, or install the mad2assettools package via the Mod Installer)", err)
 	}
-	mad2musicpatchPath, err := ensureGoBinaryBuilt(filepath.Join(repoRoot, "mad2musicpatch"), "main.go", goBinaryName("mad2musicpatch"), false)
+	mad2musicpatchPath, err := ResolveMad2MusicPatch(repoRoot)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("mad2musicpatch %w (run `just build-mad2musicpatch`)", err)
 	}
 
 	cmd := exec.Command(mad2musicpatchPath,
@@ -83,8 +84,8 @@ func AnyBlankGlobalArcDeployed(repoRoot string) bool {
 	return false
 }
 
-// RunMusicDownloader builds (if needed) and runs
-// mad2music/downloader/download_music.go, the yt-dlp-backed tool that syncs
+// RunMusicDownloader resolves a prebuilt mad2musicdownloader binary (see
+// ResolveMad2MusicDownloader -- never built on demand) and runs it, syncing
 // mad2music/audio/music/*.txt's link lists into that same directory tree
 // (skipping anything already downloaded -- see download_music.go's own
 // --download-archive use). Run with cwd set to mad2music/ itself, since
@@ -94,10 +95,9 @@ func AnyBlankGlobalArcDeployed(repoRoot string) bool {
 // here -- see ui_music.go's download button, which just reports success/
 // failure.
 func RunMusicDownloader(repoRoot string) error {
-	downloaderDir := filepath.Join(repoRoot, "mad2music", "downloader")
-	binPath, err := ensureGoBinaryBuilt(downloaderDir, "download_music.go", goBinaryName("mad2musicdownloader"), false)
+	binPath, err := ResolveMad2MusicDownloader(repoRoot)
 	if err != nil {
-		return err
+		return fmt.Errorf("mad2musicdownloader %w (run `just build-music-downloader`, or install the mad2music package via the Mod Installer)", err)
 	}
 
 	cmd := exec.Command(binPath)

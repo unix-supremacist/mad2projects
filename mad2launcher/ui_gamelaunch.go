@@ -67,7 +67,7 @@ func buildGameLaunchPage(state *AppState) fyne.CanvasObject {
 		startLevelCard,
 		launchButton,
 	)
-	return container.NewVScroll(body)
+	return container.NewScroll(body)
 }
 
 func buildInstallSelect(state *AppState) *widget.Select {

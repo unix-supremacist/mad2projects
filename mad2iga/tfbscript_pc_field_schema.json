@@ -1,0 +1,2474 @@
+{
+  "AbstractPlacement": {
+    "ID": {
+      "accessors": [
+        "arkRegisterInitialize@AbstractPlacement@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10028630), field type igIntMetaField"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 228,
+      "source": "pc"
+    },
+    "activator": {
+      "accessors": [
+        "arkRegisterInitialize@AbstractPlacement@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10028630), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 172,
+      "source": "pc"
+    },
+    "activeTimeLayer": {
+      "accessors": [
+        "arkRegisterInitialize@AbstractPlacement@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10028630), field type igFloatMetaField"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 240,
+      "source": "pc"
+    },
+    "activityState": {
+      "accessors": [
+        "arkRegisterInitialize@AbstractPlacement@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10028630), field type igEnumMetaField"
+      ],
+      "kind": [
+        "enum"
+      ],
+      "offset": 160,
+      "source": "pc"
+    },
+    "animationList": {
+      "accessors": [
+        "arkRegisterInitialize@AbstractPlacement@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10028630), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 224,
+      "source": "pc"
+    },
+    "attachNode": {
+      "accessors": [
+        "arkRegisterInitialize@AbstractPlacement@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10028630), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 184,
+      "source": "pc"
+    },
+    "attachNodeOwner": {
+      "accessors": [
+        "arkRegisterInitialize@AbstractPlacement@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10028630), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 188,
+      "source": "pc"
+    },
+    "attachRot": {
+      "accessors": [
+        "arkRegisterInitialize@AbstractPlacement@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10028630), field type igVec3fMetaField"
+      ],
+      "kind": [
+        "vec3f"
+      ],
+      "offset": 196,
+      "source": "pc"
+    },
+    "attachXYZ": {
+      "accessors": [
+        "arkRegisterInitialize@AbstractPlacement@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10028630), field type igVec3fMetaField"
+      ],
+      "kind": [
+        "vec3f"
+      ],
+      "offset": 208,
+      "source": "pc"
+    },
+    "attachedObjects": {
+      "accessors": [
+        "arkRegisterInitialize@AbstractPlacement@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10028630), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 192,
+      "source": "pc"
+    },
+    "clones": {
+      "accessors": [
+        "arkRegisterInitialize@AbstractPlacement@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10028630), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 164,
+      "source": "pc"
+    },
+    "currentMatrix": {
+      "accessors": [
+        "arkRegisterInitialize@AbstractPlacement@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10028630), field type igMatrix44fMetaField"
+      ],
+      "kind": [
+        "matrix44f"
+      ],
+      "offset": 96,
+      "source": "pc"
+    },
+    "flagPool": {
+      "accessors": [
+        "arkRegisterInitialize@AbstractPlacement@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10028630), field type igUnsignedIntMetaField"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 236,
+      "source": "pc"
+    },
+    "initMatrix": {
+      "accessors": [
+        "arkRegisterInitialize@AbstractPlacement@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10028630), field type igMatrix44fMetaField"
+      ],
+      "kind": [
+        "matrix44f"
+      ],
+      "offset": 32,
+      "source": "pc"
+    },
+    "moveIndex": {
+      "accessors": [
+        "arkRegisterInitialize@AbstractPlacement@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10028630), field type igIntMetaField"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 180,
+      "source": "pc"
+    },
+    "moveObject": {
+      "accessors": [
+        "arkRegisterInitialize@AbstractPlacement@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10028630), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 176,
+      "source": "pc"
+    },
+    "parent": {
+      "accessors": [
+        "arkRegisterInitialize@AbstractPlacement@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10028630), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 168,
+      "source": "pc"
+    },
+    "resetTemplate": {
+      "accessors": [
+        "arkRegisterInitialize@AbstractPlacement@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10028630), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 232,
+      "source": "pc"
+    },
+    "soundList": {
+      "accessors": [
+        "arkRegisterInitialize@AbstractPlacement@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10028630), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 220,
+      "source": "pc"
+    }
+  },
+  "ActivePlacementListMessage": {
+    "activeList": {
+      "accessors": [
+        "arkRegisterInitialize@ActivePlacementListMessage@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10024e40), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 12,
+      "source": "pc"
+    },
+    "forMeta": {
+      "accessors": [
+        "arkRegisterInitialize@ActivePlacementListMessage@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10024e40), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 8,
+      "source": "pc"
+    }
+  },
+  "AttachNodeReference": {
+    "attachNodeOwner": {
+      "accessors": [
+        "arkRegisterInitialize@AttachNodeReference@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10023c60), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 40,
+      "source": "pc"
+    }
+  },
+  "BreakpointMessage": {
+    "breaker": {
+      "accessors": [
+        "arkRegisterInitialize@BreakpointMessage@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x100258d0), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 8,
+      "source": "pc"
+    }
+  },
+  "ClonedSequence": {
+    "clones": {
+      "accessors": [
+        "arkRegisterInitialize@ClonedSequence@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10027f90), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 52,
+      "source": "pc"
+    },
+    "parent": {
+      "accessors": [
+        "arkRegisterInitialize@ClonedSequence@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10027f90), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 56,
+      "source": "pc"
+    }
+  },
+  "CollisionInfo": {
+    "environmentContacts": {
+      "accessors": [
+        "arkRegisterInitialize@CollisionInfo@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10029850), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 144,
+      "source": "pc"
+    },
+    "height": {
+      "accessors": [
+        "arkRegisterInitialize@CollisionInfo@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10029850), field type igFloatMetaField"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 116,
+      "source": "pc"
+    },
+    "interactsWithWorld": {
+      "accessors": [
+        "arkRegisterInitialize@CollisionInfo@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10029850), field type igBoolMetaField"
+      ],
+      "kind": [
+        "bool"
+      ],
+      "offset": 133,
+      "source": "pc"
+    },
+    "isActorSurface": {
+      "accessors": [
+        "arkRegisterInitialize@CollisionInfo@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10029850), field type igBoolMetaField"
+      ],
+      "kind": [
+        "bool"
+      ],
+      "offset": 134,
+      "source": "pc"
+    },
+    "isSolid": {
+      "accessors": [
+        "arkRegisterInitialize@CollisionInfo@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10029850), field type igBoolMetaField"
+      ],
+      "kind": [
+        "bool"
+      ],
+      "offset": 132,
+      "source": "pc"
+    },
+    "length": {
+      "accessors": [
+        "arkRegisterInitialize@CollisionInfo@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10029850), field type igFloatMetaField"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 120,
+      "source": "pc"
+    },
+    "objectContacts": {
+      "accessors": [
+        "arkRegisterInitialize@CollisionInfo@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10029850), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 140,
+      "source": "pc"
+    },
+    "objectOwner": {
+      "accessors": [
+        "arkRegisterInitialize@CollisionInfo@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10029850), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 136,
+      "source": "pc"
+    },
+    "rebound": {
+      "accessors": [
+        "arkRegisterInitialize@CollisionInfo@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10029850), field type igFloatMetaField"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 128,
+      "source": "pc"
+    },
+    "shapeType": {
+      "accessors": [
+        "arkRegisterInitialize@CollisionInfo@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10029850), field type igEnumMetaField"
+      ],
+      "kind": [
+        "enum"
+      ],
+      "offset": 32,
+      "source": "pc"
+    },
+    "transform": {
+      "accessors": [
+        "arkRegisterInitialize@CollisionInfo@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10029850), field type igMatrix44fMetaField"
+      ],
+      "kind": [
+        "matrix44f"
+      ],
+      "offset": 48,
+      "source": "pc"
+    },
+    "weight": {
+      "accessors": [
+        "arkRegisterInitialize@CollisionInfo@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10029850), field type igFloatMetaField"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 124,
+      "source": "pc"
+    },
+    "width": {
+      "accessors": [
+        "arkRegisterInitialize@CollisionInfo@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10029850), field type igFloatMetaField"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 112,
+      "source": "pc"
+    }
+  },
+  "ContactInfo": {
+    "contactFlags": {
+      "accessors": [
+        "arkRegisterInitialize@ContactInfo@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x100295a0), field type igUnsignedIntMetaField"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 64,
+      "source": "pc"
+    },
+    "contextID": {
+      "accessors": [
+        "arkRegisterInitialize@ContactInfo@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x100295a0), field type igIntMetaField"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 60,
+      "source": "pc"
+    },
+    "dynamicContact": {
+      "accessors": [
+        "arkRegisterInitialize@ContactInfo@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x100295a0), field type igRawRefMetaField"
+      ],
+      "kind": [
+        "rawref"
+      ],
+      "offset": 68,
+      "source": "pc"
+    },
+    "location": {
+      "accessors": [
+        "arkRegisterInitialize@ContactInfo@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x100295a0), field type igVec3fMetaField"
+      ],
+      "kind": [
+        "vec3f"
+      ],
+      "offset": 32,
+      "source": "pc"
+    },
+    "magnitude": {
+      "accessors": [
+        "arkRegisterInitialize@ContactInfo@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x100295a0), field type igFloatMetaField"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 44,
+      "source": "pc"
+    },
+    "normal": {
+      "accessors": [
+        "arkRegisterInitialize@ContactInfo@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x100295a0), field type igVec3fMetaField"
+      ],
+      "kind": [
+        "vec3f"
+      ],
+      "offset": 48,
+      "source": "pc"
+    }
+  },
+  "ControllerInterfaceBridge": {
+    "scriptControllerList": {
+      "accessors": [
+        "arkRegisterInitialize@ControllerInterfaceBridge@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10024a30), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 28,
+      "source": "pc"
+    }
+  },
+  "GestureMeasurement": {
+    "gestureID": {
+      "accessors": [
+        "arkRegisterInitialize@GestureMeasurement@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10028550), field type igIntMetaField"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 32,
+      "source": "pc"
+    }
+  },
+  "IntMeasurement": {
+    "maxValue": {
+      "accessors": [
+        "arkRegisterInitialize@IntMeasurement@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10025cf0), field type igIntMetaField"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 40,
+      "source": "pc"
+    },
+    "minValue": {
+      "accessors": [
+        "arkRegisterInitialize@IntMeasurement@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10025cf0), field type igIntMetaField"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 36,
+      "source": "pc"
+    },
+    "unitsName": {
+      "accessors": [
+        "arkRegisterInitialize@IntMeasurement@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10025cf0), field type igRawRefMetaField"
+      ],
+      "kind": [
+        "rawref"
+      ],
+      "offset": 32,
+      "source": "pc"
+    }
+  },
+  "InterfaceResolver": {
+    "lists": {
+      "accessors": [
+        "arkRegisterInitialize@InterfaceResolver@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x100248e0), field type igObjectRefArrayMetaField"
+      ],
+      "kind": [
+        "ptr_array"
+      ],
+      "offset": 20,
+      "source": "pc"
+    }
+  },
+  "LanguagePackInfo": {
+    "langID": {
+      "accessors": [
+        "arkRegisterInitialize@LanguagePackInfo@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x100236f0), field type igIntMetaField"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 20,
+      "source": "pc"
+    },
+    "stringDict": {
+      "accessors": [
+        "arkRegisterInitialize@LanguagePackInfo@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x100236f0), field type igMemoryRefMetaField"
+      ],
+      "kind": [
+        "memoryref"
+      ],
+      "offset": 24,
+      "source": "pc"
+    }
+  },
+  "NameExtractor": {
+    "namedObject": {
+      "accessors": [
+        "arkRegisterInitialize@NameExtractor@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10029d90), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 52,
+      "source": "pc"
+    }
+  },
+  "OpAbstractCheckValue": {
+    "LHS": {
+      "accessors": [
+        "arkRegisterInitialize@OpAbstractCheckValue@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x100231d0), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 40,
+      "source": "pc"
+    },
+    "RHS": {
+      "accessors": [
+        "arkRegisterInitialize@OpAbstractCheckValue@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x100231d0), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 48,
+      "source": "pc"
+    },
+    "relOperator": {
+      "accessors": [
+        "arkRegisterInitialize@OpAbstractCheckValue@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x100231d0), field type igEnumMetaField"
+      ],
+      "kind": [
+        "enum"
+      ],
+      "offset": 44,
+      "source": "pc"
+    }
+  },
+  "OpAbstractControl": {
+    "LHS": {
+      "accessors": [
+        "arkRegisterInitialize@OpAbstractControl@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10025040), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 48,
+      "source": "pc"
+    },
+    "cachedObject": {
+      "accessors": [
+        "arkRegisterInitialize@OpAbstractControl@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10025040), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 40,
+      "source": "pc"
+    },
+    "lastReceiver": {
+      "accessors": [
+        "arkRegisterInitialize@OpAbstractControl@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10025040), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 44,
+      "source": "pc"
+    }
+  },
+  "OpAbstractMove": {
+    "LHS": {
+      "accessors": [
+        "arkRegisterInitialize@OpAbstractMove@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10025390), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 44,
+      "source": "pc"
+    },
+    "NP": {
+      "accessors": [
+        "arkRegisterInitialize@OpAbstractMove@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10025390), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 56,
+      "source": "pc"
+    },
+    "RHS": {
+      "accessors": [
+        "arkRegisterInitialize@OpAbstractMove@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10025390), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 52,
+      "source": "pc"
+    },
+    "dir": {
+      "accessors": [
+        "arkRegisterInitialize@OpAbstractMove@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10025390), field type igEnumMetaField"
+      ],
+      "kind": [
+        "enum"
+      ],
+      "offset": 48,
+      "source": "pc"
+    },
+    "indexRHS": {
+      "accessors": [
+        "arkRegisterInitialize@OpAbstractMove@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10025390), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 40,
+      "source": "pc"
+    }
+  },
+  "OpBlock": {
+    "comment": {
+      "accessors": [
+        "arkRegisterInitialize@OpBlock@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10025b40), field type igStringMetaField"
+      ],
+      "kind": [
+        "string"
+      ],
+      "offset": 40,
+      "source": "pc"
+    }
+  },
+  "OpBranch": {
+    "branchPC": {
+      "accessors": [
+        "arkRegisterInitialize@OpBranch@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10029170), field type igUnsignedIntMetaField"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 36,
+      "source": "pc"
+    }
+  },
+  "OpChangeMembership": {
+    "LHS": {
+      "accessors": [
+        "arkRegisterInitialize@OpChangeMembership@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10026960), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 36,
+      "source": "pc"
+    },
+    "RHS": {
+      "accessors": [
+        "arkRegisterInitialize@OpChangeMembership@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10026960), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 44,
+      "source": "pc"
+    },
+    "combineOp": {
+      "accessors": [
+        "arkRegisterInitialize@OpChangeMembership@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10026960), field type igEnumMetaField"
+      ],
+      "kind": [
+        "enum"
+      ],
+      "offset": 40,
+      "source": "pc"
+    }
+  },
+  "OpCheckFOV": {
+    "LHS": {
+      "accessors": [
+        "arkRegisterInitialize@OpCheckFOV@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x100270c0), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 60,
+      "source": "pc"
+    },
+    "RHS": {
+      "accessors": [
+        "arkRegisterInitialize@OpCheckFOV@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x100270c0), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 68,
+      "source": "pc"
+    },
+    "RHSfacing": {
+      "accessors": [
+        "arkRegisterInitialize@OpCheckFOV@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x100270c0), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 40,
+      "source": "pc"
+    },
+    "RHSfov": {
+      "accessors": [
+        "arkRegisterInitialize@OpCheckFOV@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x100270c0), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 44,
+      "source": "pc"
+    },
+    "cachedObject": {
+      "accessors": [
+        "arkRegisterInitialize@OpCheckFOV@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x100270c0), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 52,
+      "source": "pc"
+    },
+    "fromLHS": {
+      "accessors": [
+        "arkRegisterInitialize@OpCheckFOV@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x100270c0), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 56,
+      "source": "pc"
+    },
+    "mode": {
+      "accessors": [
+        "arkRegisterInitialize@OpCheckFOV@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x100270c0), field type igEnumMetaField"
+      ],
+      "kind": [
+        "enum"
+      ],
+      "offset": 48,
+      "source": "pc"
+    },
+    "relOperator": {
+      "accessors": [
+        "arkRegisterInitialize@OpCheckFOV@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x100270c0), field type igEnumMetaField"
+      ],
+      "kind": [
+        "enum"
+      ],
+      "offset": 64,
+      "source": "pc"
+    }
+  },
+  "OpCheckMembership": {
+    "LHS": {
+      "accessors": [
+        "arkRegisterInitialize@OpCheckMembership@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10026790), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 40,
+      "source": "pc"
+    },
+    "RHS": {
+      "accessors": [
+        "arkRegisterInitialize@OpCheckMembership@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10026790), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 48,
+      "source": "pc"
+    },
+    "cachedObj": {
+      "accessors": [
+        "arkRegisterInitialize@OpCheckMembership@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10026790), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 56,
+      "source": "pc"
+    },
+    "cachedType": {
+      "accessors": [
+        "arkRegisterInitialize@OpCheckMembership@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10026790), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 52,
+      "source": "pc"
+    },
+    "membershipOp": {
+      "accessors": [
+        "arkRegisterInitialize@OpCheckMembership@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10026790), field type igEnumMetaField"
+      ],
+      "kind": [
+        "enum"
+      ],
+      "offset": 44,
+      "source": "pc"
+    }
+  },
+  "OpCheckReference": {
+    "LHS": {
+      "accessors": [
+        "arkRegisterInitialize@OpCheckReference@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10023ce0), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 40,
+      "source": "pc"
+    },
+    "RHS": {
+      "accessors": [
+        "arkRegisterInitialize@OpCheckReference@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10023ce0), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 48,
+      "source": "pc"
+    },
+    "cachedObj": {
+      "accessors": [
+        "arkRegisterInitialize@OpCheckReference@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10023ce0), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 60,
+      "source": "pc"
+    },
+    "cachedOwner": {
+      "accessors": [
+        "arkRegisterInitialize@OpCheckReference@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10023ce0), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 64,
+      "source": "pc"
+    },
+    "cachedType": {
+      "accessors": [
+        "arkRegisterInitialize@OpCheckReference@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10023ce0), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 56,
+      "source": "pc"
+    },
+    "indexRHS": {
+      "accessors": [
+        "arkRegisterInitialize@OpCheckReference@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10023ce0), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 52,
+      "source": "pc"
+    },
+    "relOperator": {
+      "accessors": [
+        "arkRegisterInitialize@OpCheckReference@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10023ce0), field type igEnumMetaField"
+      ],
+      "kind": [
+        "enum"
+      ],
+      "offset": 44,
+      "source": "pc"
+    }
+  },
+  "OpCheckValue": {
+    "cachedType": {
+      "accessors": [
+        "arkRegisterInitialize@OpCheckValue@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x100232e0), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 52,
+      "source": "pc"
+    },
+    "cachedValue": {
+      "accessors": [
+        "arkRegisterInitialize@OpCheckValue@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x100232e0), field type igIntMetaField"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 56,
+      "source": "pc"
+    }
+  },
+  "OpCode": {
+    "internalFlags": {
+      "accessors": [
+        "arkRegisterInitialize@OpCode@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10027420), field type igEnumMetaField"
+      ],
+      "kind": [
+        "enum"
+      ],
+      "offset": 32,
+      "source": "pc"
+    }
+  },
+  "OpComment": {
+    "comment": {
+      "accessors": [
+        "arkRegisterInitialize@OpComment@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10025c00), field type igStringMetaField"
+      ],
+      "kind": [
+        "string"
+      ],
+      "offset": 36,
+      "source": "pc"
+    }
+  },
+  "OpControl": {
+    "indexRHS": {
+      "accessors": [
+        "arkRegisterInitialize@OpControl@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10025150), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 52,
+      "source": "pc"
+    }
+  },
+  "OpCreateVariable": {
+    "varContainerType": {
+      "accessors": [
+        "arkRegisterInitialize@OpCreateVariable@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10024070), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 36,
+      "source": "pc"
+    },
+    "varContentsType": {
+      "accessors": [
+        "arkRegisterInitialize@OpCreateVariable@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10024070), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 40,
+      "source": "pc"
+    },
+    "varIndex": {
+      "accessors": [
+        "arkRegisterInitialize@OpCreateVariable@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10024070), field type igIntMetaField"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 48,
+      "source": "pc"
+    },
+    "varName": {
+      "accessors": [
+        "arkRegisterInitialize@OpCreateVariable@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10024070), field type igStringMetaField",
+        "Kind confirmed \"string_ordinal\" (not a resolvable pointer) this session \u2014 see docs/SCRIPT_FORMAT.md \"VolcanoRave findings\": resolves correctly via ObjectGraph.ResolveStringOrdinal to real variable names against a real level (e.g. \"total song beats\", \"combo counter\")."
+      ],
+      "kind": [
+        "string_ordinal"
+      ],
+      "offset": 44,
+      "source": "pc"
+    }
+  },
+  "OpCreateVariableArray": {
+    "RHS": {
+      "accessors": [
+        "arkRegisterInitialize@OpCreateVariableArray@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x100241e0), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 52,
+      "source": "pc"
+    }
+  },
+  "OpCutScene": {
+    "mode": {
+      "accessors": [
+        "arkRegisterInitialize@OpCutScene@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10027340), field type igEnumMetaField"
+      ],
+      "kind": [
+        "enum"
+      ],
+      "offset": 40,
+      "source": "pc"
+    }
+  },
+  "OpDecValue": {
+    "LHS": {
+      "accessors": [
+        "arkRegisterInitialize@OpDecValue@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x100230f0), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 36,
+      "source": "pc"
+    }
+  },
+  "OpDisplace": {
+    "NP": {
+      "accessors": [
+        "arkRegisterInitialize@OpDisplace@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10026ef0), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 36,
+      "source": "pc"
+    },
+    "combineMode": {
+      "accessors": [
+        "arkRegisterInitialize@OpDisplace@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10026ef0), field type igEnumMetaField"
+      ],
+      "kind": [
+        "enum"
+      ],
+      "offset": 40,
+      "source": "pc"
+    },
+    "headNP": {
+      "accessors": [
+        "arkRegisterInitialize@OpDisplace@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10026ef0), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 48,
+      "source": "pc"
+    },
+    "lenNP": {
+      "accessors": [
+        "arkRegisterInitialize@OpDisplace@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10026ef0), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 44,
+      "source": "pc"
+    },
+    "pitchNP": {
+      "accessors": [
+        "arkRegisterInitialize@OpDisplace@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10026ef0), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 52,
+      "source": "pc"
+    }
+  },
+  "OpFindSubSet": {
+    "cachedObject": {
+      "accessors": [
+        "arkRegisterInitialize@OpFindSubSet@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10023400), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 56,
+      "source": "pc"
+    },
+    "setRemainder": {
+      "accessors": [
+        "arkRegisterInitialize@OpFindSubSet@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10023400), field type igIntMetaField"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 52,
+      "source": "pc"
+    }
+  },
+  "OpFindVariable": {
+    "cachedObject": {
+      "accessors": [
+        "arkRegisterInitialize@OpFindVariable@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x100242f0), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 60,
+      "source": "pc"
+    },
+    "indexRHS": {
+      "accessors": [
+        "arkRegisterInitialize@OpFindVariable@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x100242f0), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 56,
+      "source": "pc"
+    },
+    "owner": {
+      "accessors": [
+        "arkRegisterInitialize@OpFindVariable@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x100242f0), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 52,
+      "source": "pc"
+    },
+    "varContainerType": {
+      "accessors": [
+        "arkRegisterInitialize@OpFindVariable@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x100242f0), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 40,
+      "source": "pc"
+    },
+    "varContentsType": {
+      "accessors": [
+        "arkRegisterInitialize@OpFindVariable@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x100242f0), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 44,
+      "source": "pc"
+    },
+    "varName": {
+      "accessors": [
+        "arkRegisterInitialize@OpFindVariable@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x100242f0), field type igStringMetaField",
+        "Kind confirmed \"string_ordinal\" this session (same mechanism as OpCreateVariable.varName) \u2014 see docs/SCRIPT_FORMAT.md."
+      ],
+      "kind": [
+        "string_ordinal"
+      ],
+      "offset": 48,
+      "source": "pc"
+    }
+  },
+  "OpFlow": {
+    "flowVal": {
+      "accessors": [
+        "arkRegisterInitialize@OpFlow@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x100274d0), field type igEnumMetaField"
+      ],
+      "kind": [
+        "enum"
+      ],
+      "offset": 40,
+      "source": "pc"
+    }
+  },
+  "OpForEach": {
+    "LHS": {
+      "accessors": [
+        "arkRegisterInitialize@OpForEach@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x100246e0), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 44,
+      "source": "pc"
+    },
+    "RHS": {
+      "accessors": [
+        "arkRegisterInitialize@OpForEach@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x100246e0), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 52,
+      "source": "pc"
+    },
+    "cachedObject": {
+      "accessors": [
+        "arkRegisterInitialize@OpForEach@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x100246e0), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 60,
+      "source": "pc"
+    },
+    "cachedSet": {
+      "accessors": [
+        "arkRegisterInitialize@OpForEach@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x100246e0), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 56,
+      "source": "pc"
+    },
+    "dir": {
+      "accessors": [
+        "arkRegisterInitialize@OpForEach@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x100246e0), field type igEnumMetaField"
+      ],
+      "kind": [
+        "enum"
+      ],
+      "offset": 48,
+      "source": "pc"
+    }
+  },
+  "OpIncValue": {
+    "LHS": {
+      "accessors": [
+        "arkRegisterInitialize@OpIncValue@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10023010), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 36,
+      "source": "pc"
+    }
+  },
+  "OpLoop": {
+    "index": {
+      "accessors": [
+        "arkRegisterInitialize@OpLoop@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10025960), field type igIntMetaField"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 40,
+      "source": "pc"
+    }
+  },
+  "OpLoopValue": {
+    "RHS": {
+      "accessors": [
+        "arkRegisterInitialize@OpLoopValue@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10023510), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 44,
+      "source": "pc"
+    },
+    "numLoops": {
+      "accessors": [
+        "arkRegisterInitialize@OpLoopValue@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10023510), field type igIntMetaField"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 48,
+      "source": "pc"
+    }
+  },
+  "OpPrint": {
+    "NP": {
+      "accessors": [
+        "arkRegisterInitialize@OpPrint@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x100275b0), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 36,
+      "source": "pc"
+    },
+    "comment": {
+      "accessors": [
+        "arkRegisterInitialize@OpPrint@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x100275b0), field type igStringMetaField"
+      ],
+      "kind": [
+        "string"
+      ],
+      "offset": 44,
+      "source": "pc"
+    },
+    "dev": {
+      "accessors": [
+        "arkRegisterInitialize@OpPrint@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x100275b0), field type igEnumMetaField"
+      ],
+      "kind": [
+        "enum"
+      ],
+      "offset": 40,
+      "source": "pc"
+    }
+  },
+  "OpRemove": {
+    "NP": {
+      "accessors": [
+        "arkRegisterInitialize@OpRemove@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10024f60), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 36,
+      "source": "pc"
+    }
+  },
+  "OpReset": {
+    "NP": {
+      "accessors": [
+        "arkRegisterInitialize@OpReset@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10022d30), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 36,
+      "source": "pc"
+    }
+  },
+  "OpSetBehavior": {
+    "NP": {
+      "accessors": [
+        "arkRegisterInitialize@OpSetBehavior@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10026320), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 36,
+      "source": "pc"
+    },
+    "indexRHS": {
+      "accessors": [
+        "arkRegisterInitialize@OpSetBehavior@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10026320), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 40,
+      "source": "pc"
+    }
+  },
+  "OpSetReference": {
+    "LHS": {
+      "accessors": [
+        "arkRegisterInitialize@OpSetReference@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10023f20), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 36,
+      "source": "pc"
+    },
+    "RHS": {
+      "accessors": [
+        "arkRegisterInitialize@OpSetReference@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10023f20), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 40,
+      "source": "pc"
+    },
+    "indexRHS": {
+      "accessors": [
+        "arkRegisterInitialize@OpSetReference@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10023f20), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 44,
+      "source": "pc"
+    }
+  },
+  "OpSetValue": {
+    "LHS": {
+      "accessors": [
+        "arkRegisterInitialize@OpSetValue@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10022c20), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 36,
+      "source": "pc"
+    },
+    "RHS": {
+      "accessors": [
+        "arkRegisterInitialize@OpSetValue@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10022c20), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 40,
+      "source": "pc"
+    }
+  },
+  "OpSlideValue": {
+    "LHS": {
+      "accessors": [
+        "arkRegisterInitialize@OpSlideValue@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10022e10), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 40,
+      "source": "pc"
+    },
+    "RHS": {
+      "accessors": [
+        "arkRegisterInitialize@OpSlideValue@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10022e10), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 44,
+      "source": "pc"
+    },
+    "cachedSlider": {
+      "accessors": [
+        "arkRegisterInitialize@OpSlideValue@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10022e10), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 60,
+      "source": "pc"
+    },
+    "easeInRHS": {
+      "accessors": [
+        "arkRegisterInitialize@OpSlideValue@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10022e10), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 56,
+      "source": "pc"
+    },
+    "easeOutRHS": {
+      "accessors": [
+        "arkRegisterInitialize@OpSlideValue@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10022e10), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 52,
+      "source": "pc"
+    },
+    "secondsRHS": {
+      "accessors": [
+        "arkRegisterInitialize@OpSlideValue@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10022e10), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 48,
+      "source": "pc"
+    }
+  },
+  "OpSpawn": {
+    "RHS": {
+      "accessors": [
+        "arkRegisterInitialize@OpSpawn@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10025280), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 52,
+      "source": "pc"
+    },
+    "facingRHS": {
+      "accessors": [
+        "arkRegisterInitialize@OpSpawn@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10025280), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 56,
+      "source": "pc"
+    }
+  },
+  "OpStartSequence": {
+    "LHS": {
+      "accessors": [
+        "arkRegisterInitialize@OpStartSequence@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10023900), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 40,
+      "source": "pc"
+    },
+    "cachedObject": {
+      "accessors": [
+        "arkRegisterInitialize@OpStartSequence@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10023900), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 48,
+      "source": "pc"
+    },
+    "indexRHS": {
+      "accessors": [
+        "arkRegisterInitialize@OpStartSequence@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10023900), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 44,
+      "source": "pc"
+    }
+  },
+  "OpStopSequence": {
+    "NP": {
+      "accessors": [
+        "arkRegisterInitialize@OpStopSequence@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10023a60), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 36,
+      "source": "pc"
+    }
+  },
+  "OpTeleportTo": {
+    "LHS": {
+      "accessors": [
+        "arkRegisterInitialize@OpTeleportTo@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x100255c0), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 36,
+      "source": "pc"
+    },
+    "dir": {
+      "accessors": [
+        "arkRegisterInitialize@OpTeleportTo@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x100255c0), field type igEnumMetaField"
+      ],
+      "kind": [
+        "enum"
+      ],
+      "offset": 40,
+      "source": "pc"
+    },
+    "facingRHS": {
+      "accessors": [
+        "arkRegisterInitialize@OpTeleportTo@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x100255c0), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 44,
+      "source": "pc"
+    }
+  },
+  "OpTurnTo": {
+    "NP": {
+      "accessors": [
+        "arkRegisterInitialize@OpTurnTo@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10025720), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 44,
+      "source": "pc"
+    },
+    "facingRHS": {
+      "accessors": [
+        "arkRegisterInitialize@OpTurnTo@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10025720), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 40,
+      "source": "pc"
+    },
+    "indexRHS": {
+      "accessors": [
+        "arkRegisterInitialize@OpTurnTo@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10025720), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 48,
+      "source": "pc"
+    }
+  },
+  "OpUserBehavior": {
+    "thisPC": {
+      "accessors": [
+        "arkRegisterInitialize@OpUserBehavior@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x100261a0), field type igUnsignedIntMetaField"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 40,
+      "source": "pc"
+    }
+  },
+  "Placement": {
+    "activationRange": {
+      "accessors": [
+        "arkRegisterInitialize@Placement@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10028ce0), field type igFloatMetaField"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 296,
+      "source": "pc"
+    },
+    "activationRangeBuffer": {
+      "accessors": [
+        "arkRegisterInitialize@Placement@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10028ce0), field type igFloatMetaField"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 300,
+      "source": "pc"
+    },
+    "activeTime": {
+      "accessors": [
+        "arkRegisterInitialize@Placement@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10028ce0), field type igFloatMetaField"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 272,
+      "source": "pc"
+    },
+    "collision": {
+      "accessors": [
+        "arkRegisterInitialize@Placement@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10028ce0), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 288,
+      "source": "pc"
+    },
+    "execBehavior": {
+      "accessors": [
+        "arkRegisterInitialize@Placement@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10028ce0), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 264,
+      "source": "pc"
+    },
+    "localVarList": {
+      "accessors": [
+        "arkRegisterInitialize@Placement@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10028ce0), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 268,
+      "source": "pc"
+    },
+    "majorIndex": {
+      "accessors": [
+        "arkRegisterInitialize@Placement@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10028ce0), field type igIntMetaField"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 256,
+      "source": "pc"
+    },
+    "proceduralAlpha": {
+      "accessors": [
+        "arkRegisterInitialize@Placement@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10028ce0), field type igBoolMetaField"
+      ],
+      "kind": [
+        "bool"
+      ],
+      "offset": 309,
+      "source": "pc"
+    },
+    "receivesShadows": {
+      "accessors": [
+        "arkRegisterInitialize@Placement@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10028ce0), field type igBoolMetaField"
+      ],
+      "kind": [
+        "bool"
+      ],
+      "offset": 308,
+      "source": "pc"
+    },
+    "scaleVec": {
+      "accessors": [
+        "arkRegisterInitialize@Placement@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10028ce0), field type igVec3fMetaField"
+      ],
+      "kind": [
+        "vec3f"
+      ],
+      "offset": 276,
+      "source": "pc"
+    },
+    "script": {
+      "accessors": [
+        "arkRegisterInitialize@Placement@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10028ce0), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 260,
+      "source": "pc"
+    },
+    "shadowCastMethod": {
+      "accessors": [
+        "arkRegisterInitialize@Placement@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10028ce0), field type igEnumMetaField"
+      ],
+      "kind": [
+        "enum"
+      ],
+      "offset": 304,
+      "source": "pc"
+    },
+    "tint": {
+      "accessors": [
+        "arkRegisterInitialize@Placement@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10028ce0), field type igVec4ucMetaField"
+      ],
+      "kind": [
+        "vec4uc"
+      ],
+      "offset": 292,
+      "source": "pc"
+    }
+  },
+  "PlacementInterfaceResolver": {
+    "activityLists": {
+      "accessors": [
+        "arkRegisterInitialize@PlacementInterfaceResolver@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10024db0), field type igObjectRefArrayMetaField"
+      ],
+      "kind": [
+        "ptr_array"
+      ],
+      "offset": 28,
+      "source": "pc"
+    }
+  },
+  "PlacementReference": {
+    "rememberedMatrix": {
+      "accessors": [
+        "arkRegisterInitialize@PlacementReference@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x100281b0), field type igMatrix44fMetaField"
+      ],
+      "kind": [
+        "matrix44f"
+      ],
+      "offset": 48,
+      "source": "pc"
+    }
+  },
+  "PlacementStateChange": {
+    "oldState": {
+      "accessors": [
+        "arkRegisterInitialize@PlacementStateChange@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10029050), field type igEnumMetaField"
+      ],
+      "kind": [
+        "enum"
+      ],
+      "offset": 8,
+      "source": "pc"
+    },
+    "placement": {
+      "accessors": [
+        "arkRegisterInitialize@PlacementStateChange@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10029050), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 12,
+      "source": "pc"
+    }
+  },
+  "RHSValueStack": {
+    "isRandom": {
+      "accessors": [
+        "arkRegisterInitialize@RHSValueStack@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10022a60), field type igBoolMetaField"
+      ],
+      "kind": [
+        "bool"
+      ],
+      "offset": 36,
+      "source": "pc"
+    },
+    "type": {
+      "accessors": [
+        "arkRegisterInitialize@RHSValueStack@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10022a60), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 28,
+      "source": "pc"
+    },
+    "value": {
+      "accessors": [
+        "arkRegisterInitialize@RHSValueStack@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10022a60), field type igIntMetaField"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 32,
+      "source": "pc"
+    }
+  },
+  "RayContact": {
+    "end": {
+      "accessors": [
+        "arkRegisterInitialize@RayContact@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10029730), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 76,
+      "source": "pc"
+    },
+    "start": {
+      "accessors": [
+        "arkRegisterInitialize@RayContact@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10029730), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 72,
+      "source": "pc"
+    },
+    "testRayFunc": {
+      "accessors": [
+        "arkRegisterInitialize@RayContact@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10029730), field type igStructMetaField"
+      ],
+      "kind": [
+        "struct"
+      ],
+      "offset": 80,
+      "source": "pc"
+    }
+  },
+  "RayEndPoint": {
+    "point": {
+      "accessors": [
+        "arkRegisterInitialize@RayEndPoint@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10025ed0), field type igVec3fMetaField"
+      ],
+      "kind": [
+        "vec3f"
+      ],
+      "offset": 32,
+      "source": "pc"
+    }
+  },
+  "ScriptColorInfo": {
+    "resetValue": {
+      "accessors": [
+        "arkRegisterInitialize@ScriptColorInfo@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10025f80), field type igIntMetaField"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 36,
+      "source": "pc"
+    },
+    "value": {
+      "accessors": [
+        "arkRegisterInitialize@ScriptColorInfo@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10025f80), field type igIntMetaField"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 32,
+      "source": "pc"
+    }
+  },
+  "ScriptController": {
+    "gestureArray": {
+      "accessors": [
+        "arkRegisterInitialize@ScriptController@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10028430), field type igMemoryRefArrayMetaField"
+      ],
+      "kind": [
+        "memoryref_array"
+      ],
+      "offset": 32,
+      "source": "pc"
+    },
+    "richPresence": {
+      "accessors": [
+        "arkRegisterInitialize@ScriptController@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10028430), field type igIntMetaField"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 368,
+      "source": "pc"
+    }
+  },
+  "ScriptGroupStack": {
+    "editType": {
+      "accessors": [
+        "arkRegisterInitialize@ScriptGroupStack@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10024980), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 24,
+      "source": "pc"
+    }
+  },
+  "ScriptInfo": {
+    "masterVarList": {
+      "accessors": [
+        "arkRegisterInitialize@ScriptInfo@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10028320), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 36,
+      "source": "pc"
+    },
+    "opList": {
+      "accessors": [
+        "arkRegisterInitialize@ScriptInfo@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10028320), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 32,
+      "source": "pc"
+    }
+  },
+  "ScriptObject": {
+    "getFunc": {
+      "accessors": [
+        "arkRegisterInitialize@ScriptObject@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10026ac0), field type igStructMetaField"
+      ],
+      "kind": [
+        "struct"
+      ],
+      "offset": 20,
+      "source": "pc"
+    },
+    "resetFunc": {
+      "accessors": [
+        "arkRegisterInitialize@ScriptObject@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10026ac0), field type igStructMetaField"
+      ],
+      "kind": [
+        "struct"
+      ],
+      "offset": 28,
+      "source": "pc"
+    },
+    "setFunc": {
+      "accessors": [
+        "arkRegisterInitialize@ScriptObject@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10026ac0), field type igStructMetaField"
+      ],
+      "kind": [
+        "struct"
+      ],
+      "offset": 24,
+      "source": "pc"
+    }
+  },
+  "ScriptObjectSortedList": {
+    "sortCompanion": {
+      "accessors": [
+        "arkRegisterInitialize@ScriptObjectSortedList@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x100245c0), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 24,
+      "source": "pc"
+    }
+  },
+  "ScriptReference": {
+    "obj": {
+      "accessors": [
+        "arkRegisterInitialize@ScriptReference@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10023b50), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 36,
+      "source": "pc"
+    },
+    "type": {
+      "accessors": [
+        "arkRegisterInitialize@ScriptReference@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10023b50), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 32,
+      "source": "pc"
+    }
+  },
+  "ScriptScreenInfo": {
+    "resetValue": {
+      "accessors": [
+        "arkRegisterInitialize@ScriptScreenInfo@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10024c10), field type igIntMetaField"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 36,
+      "source": "pc"
+    },
+    "value": {
+      "accessors": [
+        "arkRegisterInitialize@ScriptScreenInfo@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10024c10), field type igIntMetaField"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 32,
+      "source": "pc"
+    }
+  },
+  "ScriptSet": {
+    "list": {
+      "accessors": [
+        "arkRegisterInitialize@ScriptSet@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x100244e0), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 32,
+      "source": "pc"
+    }
+  },
+  "ScriptVariantList": {
+    "templateVarList": {
+      "accessors": [
+        "arkRegisterInitialize@ScriptVariantList@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10024260), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 24,
+      "source": "pc"
+    }
+  },
+  "Sequence": {
+    "activator": {
+      "accessors": [
+        "arkRegisterInitialize@Sequence@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10027dd0), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 48,
+      "source": "pc"
+    },
+    "flags": {
+      "accessors": [
+        "arkRegisterInitialize@Sequence@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10027dd0), field type igUnsignedIntMetaField"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 36,
+      "source": "pc"
+    },
+    "mediaName": {
+      "accessors": [
+        "arkRegisterInitialize@Sequence@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10027dd0), field type igStringMetaField"
+      ],
+      "kind": [
+        "string"
+      ],
+      "offset": 32,
+      "source": "pc"
+    },
+    "playbackMode": {
+      "accessors": [
+        "arkRegisterInitialize@Sequence@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10027dd0), field type igEnumMetaField"
+      ],
+      "kind": [
+        "enum"
+      ],
+      "offset": 40,
+      "source": "pc"
+    },
+    "playbackPercent": {
+      "accessors": [
+        "arkRegisterInitialize@Sequence@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10027dd0), field type igFloatMetaField"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 44,
+      "source": "pc"
+    }
+  },
+  "Slider": {
+    "anchorObj": {
+      "accessors": [
+        "arkRegisterInitialize@Slider@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10027840), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 64,
+      "source": "pc"
+    },
+    "anchorObjIt": {
+      "accessors": [
+        "arkRegisterInitialize@Slider@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10027840), field type igStructMetaField"
+      ],
+      "kind": [
+        "struct"
+      ],
+      "offset": 68,
+      "source": "pc"
+    },
+    "curVariant": {
+      "accessors": [
+        "arkRegisterInitialize@Slider@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10027840), field type igStructMetaField"
+      ],
+      "kind": [
+        "struct"
+      ],
+      "offset": 80,
+      "source": "pc"
+    },
+    "duration": {
+      "accessors": [
+        "arkRegisterInitialize@Slider@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10027840), field type igFloatMetaField"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 96,
+      "source": "pc"
+    },
+    "easeIn": {
+      "accessors": [
+        "arkRegisterInitialize@Slider@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10027840), field type igFloatMetaField"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 104,
+      "source": "pc"
+    },
+    "easeOut": {
+      "accessors": [
+        "arkRegisterInitialize@Slider@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10027840), field type igFloatMetaField"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 100,
+      "source": "pc"
+    },
+    "elapsedTime": {
+      "accessors": [
+        "arkRegisterInitialize@Slider@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10027840), field type igFloatMetaField"
+      ],
+      "kind": [
+        "float"
+      ],
+      "offset": 92,
+      "source": "pc"
+    },
+    "isPackedValue": {
+      "accessors": [
+        "arkRegisterInitialize@Slider@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10027840), field type igBoolMetaField"
+      ],
+      "kind": [
+        "bool"
+      ],
+      "offset": 108,
+      "source": "pc"
+    },
+    "slideStack": {
+      "accessors": [
+        "arkRegisterInitialize@Slider@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10027840), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 52,
+      "source": "pc"
+    },
+    "stackIt": {
+      "accessors": [
+        "arkRegisterInitialize@Slider@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10027840), field type igStructMetaField"
+      ],
+      "kind": [
+        "struct"
+      ],
+      "offset": 60,
+      "source": "pc"
+    },
+    "startMeta": {
+      "accessors": [
+        "arkRegisterInitialize@Slider@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10027840), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 76,
+      "source": "pc"
+    },
+    "startVariant": {
+      "accessors": [
+        "arkRegisterInitialize@Slider@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10027840), field type igStructMetaField"
+      ],
+      "kind": [
+        "struct"
+      ],
+      "offset": 72,
+      "source": "pc"
+    },
+    "targetMeta": {
+      "accessors": [
+        "arkRegisterInitialize@Slider@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10027840), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 88,
+      "source": "pc"
+    },
+    "targetVariant": {
+      "accessors": [
+        "arkRegisterInitialize@Slider@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10027840), field type igStructMetaField"
+      ],
+      "kind": [
+        "struct"
+      ],
+      "offset": 84,
+      "source": "pc"
+    },
+    "valueOwner": {
+      "accessors": [
+        "arkRegisterInitialize@Slider@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10027840), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 56,
+      "source": "pc"
+    }
+  },
+  "SortPairList": {
+    "indexOfMax": {
+      "accessors": [
+        "arkRegisterInitialize@SortPairList@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x100237f0), field type igIntMetaField"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 28,
+      "source": "pc"
+    },
+    "indexOfMin": {
+      "accessors": [
+        "arkRegisterInitialize@SortPairList@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x100237f0), field type igIntMetaField"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 24,
+      "source": "pc"
+    }
+  },
+  "StringInfo": {
+    "decimalDigits": {
+      "accessors": [
+        "arkRegisterInitialize@StringInfo@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10027c10), field type igIntMetaField"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 44,
+      "source": "pc"
+    },
+    "flags": {
+      "accessors": [
+        "arkRegisterInitialize@StringInfo@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10027c10), field type igIntMetaField"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 36,
+      "source": "pc"
+    },
+    "integerDigits": {
+      "accessors": [
+        "arkRegisterInitialize@StringInfo@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10027c10), field type igIntMetaField"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 40,
+      "source": "pc"
+    },
+    "length": {
+      "accessors": [
+        "arkRegisterInitialize@StringInfo@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10027c10), field type igIntMetaField"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 48,
+      "source": "pc"
+    },
+    "unicodeText": {
+      "accessors": [
+        "arkRegisterInitialize@StringInfo@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10027c10), field type igRawRefMetaField"
+      ],
+      "kind": [
+        "rawref"
+      ],
+      "offset": 32,
+      "source": "pc"
+    }
+  },
+  "ValueInfo": {
+    "resetValue": {
+      "accessors": [
+        "arkRegisterInitialize@ValueInfo@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10028070), field type igIntMetaField"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 40,
+      "source": "pc"
+    },
+    "type": {
+      "accessors": [
+        "arkRegisterInitialize@ValueInfo@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10028070), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 32,
+      "source": "pc"
+    },
+    "value": {
+      "accessors": [
+        "arkRegisterInitialize@ValueInfo@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10028070), field type igIntMetaField"
+      ],
+      "kind": [
+        "int"
+      ],
+      "offset": 36,
+      "source": "pc"
+    }
+  },
+  "ValueRHSVariant": {
+    "arithOperator": {
+      "accessors": [
+        "arkRegisterInitialize@ValueRHSVariant@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10026430), field type igEnumMetaField"
+      ],
+      "kind": [
+        "enum"
+      ],
+      "offset": 12,
+      "source": "pc"
+    },
+    "conditioner": {
+      "accessors": [
+        "arkRegisterInitialize@ValueRHSVariant@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10026430), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 24,
+      "source": "pc"
+    },
+    "resultFunc": {
+      "accessors": [
+        "arkRegisterInitialize@ValueRHSVariant@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10026430), field type igStructMetaField"
+      ],
+      "kind": [
+        "struct"
+      ],
+      "offset": 20,
+      "source": "pc"
+    },
+    "varOp1": {
+      "accessors": [
+        "arkRegisterInitialize@ValueRHSVariant@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10026430), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 8,
+      "source": "pc"
+    },
+    "varOp2": {
+      "accessors": [
+        "arkRegisterInitialize@ValueRHSVariant@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x10026430), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 16,
+      "source": "pc"
+    }
+  },
+  "ValueStack": {
+    "otherPoint": {
+      "accessors": [
+        "arkRegisterInitialize@ValueStack@TFBScriptInfo@Gap (ScriptInfoLib.dll 0x100229e0), field type igObjectRefMetaField"
+      ],
+      "kind": [
+        "ptr"
+      ],
+      "offset": 24,
+      "source": "pc"
+    }
+  }
+}

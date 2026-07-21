@@ -1,6 +1,8 @@
 package main
 
 import (
+	"path/filepath"
+
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
@@ -8,24 +10,25 @@ import (
 )
 
 // buildRandomizerPage is the "Mad2 Randomizer" category: edit
-// ../mad2rando5's flags (its "config", since it's a one-shot CLI generator
+// mad2rando5's flags (its "config", since it's a one-shot CLI generator
 // with no config file of its own -- see RandomizerSettings) and run it,
 // writing level_redirects.txt straight into the selected install so
 // mad2levelredirectmod.dll picks it up on next launch.
 func buildRandomizerPage(state *AppState) fyne.CanvasObject {
 	header := widget.NewLabelWithStyle("Mad2 Randomizer", fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
 
-	dir, found := LocateMad2Rando5Dir(state.Installs)
-	if !found {
-		return container.NewVBox(header,
-			widget.NewLabel("../mad2rando5 not found (expected as a sibling of this repo's parent directory)."))
-	}
-
 	inst := state.SelectedInstall()
 	if inst == nil {
 		return container.NewVBox(header, widget.NewLabel("No install selected -- pick one under Game Launch first."))
 	}
 	instCopy := *inst
+	repoRoot := filepath.Dir(instCopy.Dir)
+
+	if _, err := ResolveMad2Rando5(repoRoot); err != nil {
+		return container.NewVBox(header,
+			widget.NewLabel("mad2rando5 "+err.Error()+"\n\nRun `just build-mad2rando5`, or install the mad2rando package via the Mod Installer."))
+	}
+
 	cfg := state.Settings.RandomizerFor(instCopy)
 
 	persist := func() {
@@ -78,7 +81,7 @@ func buildRandomizerPage(state *AppState) fyne.CanvasObject {
 	// mad2rando5.log (in the install dir, alongside level_redirects.txt),
 	// never to this UI. RunRandomizer itself writes that log.
 	runButton := widget.NewButton("Run Randomizer", func() {
-		if err := RunRandomizer(dir, cfg, instCopy.Dir); err != nil {
+		if err := RunRandomizer(repoRoot, cfg, instCopy.Dir); err != nil {
 			dialog.ShowError(err, state.Window)
 			return
 		}
@@ -92,5 +95,5 @@ func buildRandomizerPage(state *AppState) fyne.CanvasObject {
 		form,
 		runButton,
 	)
-	return container.NewVScroll(body)
+	return container.NewScroll(body)
 }

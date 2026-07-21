@@ -90,6 +90,6 @@ func buildCheatsPage(state *AppState) fyne.CanvasObject {
 	renderSlot(slots[0])
 
 	top := container.NewVBox(header, widget.NewLabel("Save slot:"), slotSelect)
-	scroll := container.NewVScroll(body)
+	scroll := container.NewScroll(body)
 	return container.NewBorder(top, nil, nil, nil, scroll)
 }

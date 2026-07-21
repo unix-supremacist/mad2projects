@@ -556,6 +556,26 @@ func RepackFromArchive(srcPath, dstPath string, replacements map[string][]byte) 
 		entries[i].Mode = fe.Descriptor.Mode
 
 		if replacement, ok := replacements[fe.Name]; ok {
+			// The descriptor's DecompressedSize must reflect the *actual*
+			// decompressed length of the replacement content, not the
+			// original file it's replacing. This field is load-bearing on
+			// two separate paths that both walk it as a byte-count loop
+			// bound rather than trusting the physical chunk stream:
+			//   - Repack()'s own KeepZlib chunk-offset walk just below,
+			//     which reconstructs this entry's chunk-properties-table
+			//     rows by decrementing a `remaining` counter seeded from
+			//     this value; a stale (too-small) value stops that walk
+			//     before it reaches chunks that are physically present in
+			//     the replacement data, silently dropping them from the
+			//     properties table.
+			//   - iga.go's extractCompressed/ExtractRawData, which use the
+			//     descriptor's DecompressedSize the same way on read-back
+			//     (by this tool or, presumably, the game's own loader).
+			// Leaving it stale (the pre-existing bug this fixes) is
+			// harmless only for edits that don't cross a 32KB chunk
+			// boundary; it silently truncates/corrupts anything that does.
+			entries[i].DecompressedSize = uint32(len(replacement))
+
 			if arc.Header.MemoryPoolIndex == 1 {
 				var fileBuf bytes.Buffer
 				data := replacement

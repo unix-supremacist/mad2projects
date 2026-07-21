@@ -148,6 +148,7 @@ struct Config {
     EffectTiming lowFps{6, 8000, 15000};
     EffectTiming thermalInversion{6, 10000, 20000};
     EffectTiming melt{6, 10000, 20000};
+    EffectTiming invertedCulling{6, 8000, 15000};
 } g_Config;
 
 static void LoadTiming(const Mad2ConfigApi& api, const char* prefix, EffectTiming& t, const char* comment) {
@@ -196,6 +197,12 @@ static void EnsureConfigLoaded() {
                "ThermalInversion: chance-pool weight/duration. Approximated by zeroing 2 of 3 color channels "
                "(cycling which one survives) rather than true grayscale -- see file header.");
     LoadTiming(api, "Melt", g_Config.melt, "Melt: chance-pool weight/duration.");
+    LoadTiming(api, "InvertedCulling", g_Config.invertedCulling,
+               "InvertedCulling: chance-pool weight/duration. Inverts backface culling for the whole scene "
+               "(D3DRS_CULLMODE CW<->CCW) -- most geometry renders inside-out, with holes where solid surfaces "
+               "should be. Not a post-process effect like the others above (it hooks SetRenderState directly, "
+               "not the ping-pong pipeline) -- discovered as an accidental bug while debugging mad2mirrormod's "
+               "own projection-mirroring technique, and it looked cool enough to keep as a real effect.");
 
     Log("Config loaded.\n");
 }
@@ -622,6 +629,19 @@ static void WINAPI ApplyInvertX(void*) { g_InvertXActive.store(true); }
 static void WINAPI ClearInvertX(void*) { g_InvertXActive.store(false); }
 static void WINAPI ApplyInvertY(void*) { g_InvertYActive.store(true); }
 static void WINAPI ClearInvertY(void*) { g_InvertYActive.store(false); }
+
+// -- InvertedCulling -- NOT a post-process pipeline effect (no RenderFn,
+// never appears in g_Pipeline below): it hooks SetRenderState directly (see
+// HookSetRenderState near the other D3D9 hooks) and inverts whatever
+// D3DRS_CULLMODE the game asks for, for as long as it's active. Discovered
+// as a real bug while building mad2mirrormod's HUD-preserving projection-
+// mirror technique -- mirroring flips triangle winding, and forgetting to
+// compensate cull mode produced exactly this look (most geometry culled
+// away, holes where solid surfaces should be) unintentionally. Kept here
+// as a real chaos effect on request.
+static std::atomic<bool> g_InvertedCullingActive{false};
+static void WINAPI ApplyInvertedCulling(void*) { g_InvertedCullingActive.store(true); }
+static void WINAPI ClearInvertedCulling(void*) { g_InvertedCullingActive.store(false); }
 static void Render_InvertX(IDirect3DDevice9* dev, IDirect3DTexture9* src, int vpW, int vpH, uint64_t) {
     SetPassthroughTextureState(dev, src, D3DTEXF_LINEAR);
     DrawQuad(dev, 0, 0, static_cast<float>(vpW), static_cast<float>(vpH), 1, 0, 0, 1);
@@ -1281,6 +1301,8 @@ static void EnsureEffectsRegistered() {
     RegisterEffect("ThermalInversion", "Thermal Inversion", g_Config.thermalInversion, ApplyThermalInversion,
                     ClearThermalInversion);
     RegisterEffect("Melt", "Screen Melt", g_Config.melt, ApplyMelt, ClearMelt);
+    RegisterEffect("InvertedCulling", "Inside-Out World", g_Config.invertedCulling, ApplyInvertedCulling,
+                    ClearInvertedCulling);
 
     g_EffectsRegistered = true;
 }
@@ -1372,6 +1394,29 @@ static HRESULT STDMETHODCALLTYPE HookReset(IDirect3DDevice9* This, D3DPRESENT_PA
     return hr;
 }
 
+// IDirect3DDevice9::SetRenderState (vtable slot 57) -- only intercepted for
+// InvertedCulling's sake (see its own comment above). A true mirror flips
+// triangle winding, so InvertedCulling's own effect *is* exactly "leave the
+// projection alone but invert cull mode" -- the same compensation
+// mad2mirrormod needs for its projection-mirroring technique, just applied
+// on its own as a standalone visual-glitch effect here instead of as a
+// correction for something else.
+typedef HRESULT(STDMETHODCALLTYPE* SetRenderState_t)(IDirect3DDevice9*, D3DRENDERSTATETYPE, DWORD);
+static SetRenderState_t RealSetRenderState = nullptr;
+
+static DWORD InvertCullMode(DWORD mode) {
+    if (mode == D3DCULL_CW) return D3DCULL_CCW;
+    if (mode == D3DCULL_CCW) return D3DCULL_CW;
+    return mode;  // D3DCULL_NONE (or anything unexpected) passes through
+}
+
+static HRESULT STDMETHODCALLTYPE HookSetRenderState(IDirect3DDevice9* This, D3DRENDERSTATETYPE State, DWORD Value) {
+    if (State == D3DRS_CULLMODE && g_InvertedCullingActive.load()) {
+        Value = InvertCullMode(Value);
+    }
+    return RealSetRenderState(This, State, Value);
+}
+
 typedef HRESULT(STDMETHODCALLTYPE* CreateDevice_t)(IDirect3D9*, UINT, D3DDEVTYPE, HWND, DWORD,
                                                      D3DPRESENT_PARAMETERS*, IDirect3DDevice9**);
 static CreateDevice_t RealCreateDevice = nullptr;
@@ -1392,6 +1437,12 @@ static HRESULT STDMETHODCALLTYPE HookCreateDevice(IDirect3D9* This, UINT Adapter
         Mad2HookUtil_PatchVTableSlot(*ppReturnedDeviceInterface, 16, reinterpret_cast<void*>(HookReset), &prevReset);
         RealReset = reinterpret_cast<Reset_t>(prevReset);
         Log("Hooked IDirect3DDevice9::Reset (vtable[16], device=%p)\n", (void*)*ppReturnedDeviceInterface);
+
+        void* prevSetRenderState = nullptr;
+        Mad2HookUtil_PatchVTableSlot(*ppReturnedDeviceInterface, 57, reinterpret_cast<void*>(HookSetRenderState),
+                                      &prevSetRenderState);
+        RealSetRenderState = reinterpret_cast<SetRenderState_t>(prevSetRenderState);
+        Log("Hooked IDirect3DDevice9::SetRenderState (vtable[57], device=%p)\n", (void*)*ppReturnedDeviceInterface);
     }
     return hr;
 }

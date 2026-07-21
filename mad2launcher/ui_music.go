@@ -130,13 +130,13 @@ func buildMusicPage(state *AppState) fyne.CanvasObject {
 	// this used to shell out to cmake directly, duplicating the justfile's
 	// build-music-linux recipe). This card is status-only: it just tells you
 	// whether `just build-music-linux` has been run yet.
-	binStatus := widget.NewLabel(musicBinStatusText(musicBinPath(repoRoot)))
+	binStatus := widget.NewLabel(musicBinStatusText(repoRoot))
 	binCard := widget.NewCard("mad2music binary", "",
 		container.NewVBox(binStatus, widget.NewLabel("Built via `just build-music-linux` (not from this launcher).")))
 
-	// Music downloading -- runs mad2music/downloader/download_music.go
-	// (built on demand, same ensureGoBinaryBuilt pattern as mad2relauncher/
-	// mad2rando5) against mad2music/audio/music's category link lists.
+	// Music downloading -- runs a prebuilt mad2musicdownloader binary (see
+	// ResolveMad2MusicDownloader in build_native.go -- never built on demand)
+	// against mad2music/audio/music's category link lists.
 	// Progress/errors go to mad2music/logs/music_download.log, not this UI
 	// (per changes.md, a log file is enough -- no need to stream yt-dlp's
 	// full output here).
@@ -207,14 +207,14 @@ func buildMusicPage(state *AppState) fyne.CanvasObject {
 		podcastCard,
 		arcCard,
 	)
-	return container.NewVScroll(body)
+	return container.NewScroll(body)
 }
 
-func musicBinStatusText(binPath string) string {
-	if fileExists(binPath) {
+func musicBinStatusText(repoRoot string) string {
+	if binPath, err := ResolveMad2Music(repoRoot); err == nil {
 		return "Found: " + binPath
 	}
-	return "Not found: " + binPath + " (run `just build-music-linux`)"
+	return "Not found: " + musicBinPath(repoRoot) + " (run `just build-music-linux`, or install the mad2music package via the Mod Installer)"
 }
 
 func globalArcStatusText(repoRoot string) string {

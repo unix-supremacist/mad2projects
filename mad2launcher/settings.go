@@ -41,6 +41,11 @@ type LauncherSettings struct {
 	ExtraRoots           []string                      `json:"extraRoots"`
 	PerInstall           map[string]InstallSettings    `json:"perInstall"`           // keyed by absolute install dir
 	PerInstallRandomizer map[string]RandomizerSettings `json:"perInstallRandomizer"` // keyed by absolute install dir
+
+	// PackagesDir overrides the Mod Installer's auto-discovered packages/
+	// root (see ResolvePackagesRoot in modinstaller.go) -- "" means fall
+	// back to <exeDir>/packages, then <repoRoot>/dist/<platform>.
+	PackagesDir string `json:"packagesDir"`
 }
 
 // RandomizerSettings mirrors ../mad2rando5's own CLI flags (main.go) --
@@ -98,10 +103,20 @@ func defaultWinePrefix(inst Install) string {
 }
 
 // defaultProtonPathSetting mirrors the justfile's own protonpath default.
+// defaultProtonPathSetting is a first-run UI pre-fill only -- ResolveProtonPath
+// (launch.go) is what actually matters at launch time and does this same
+// broad search itself regardless of what's stored here, falling through if
+// this guess doesn't exist. Still worth getting right: showing an install
+// found via steamRootCandidates (covers non-~/.local/share/Steam installs,
+// e.g. Flatpak) beats always showing the same hardcoded guess that may not
+// exist on this machine at all.
 func defaultProtonPathSetting() string {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return ""
+	}
+	if found, err := ResolveProtonPath(""); err == nil {
+		return found
 	}
 	return filepath.Join(home, ".local/share/Steam/compatibilitytools.d/GE-Proton10-34")
 }

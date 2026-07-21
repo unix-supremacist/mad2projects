@@ -600,18 +600,294 @@ func CompilePak(r io.Reader, w io.Writer) error {
 		sec0Offset = 2048
 	}
 
-	for i := int(sec0Offset); i < int(meta.StringPoolStart); i++ {
-		val := binary.LittleEndian.Uint32(outBytes[i : i+4])
-
-		// If this is a valid offset that pointed to a location past the old string pool,
-		// we shift it by the offset difference.
+	// The fixup pass below covers the WHOLE file, not just the region physically stored before
+	// the string pool -- extending a bug where any pointer field stored AFTER the pool (in a
+	// typical .pak, the bulk of the file's actual object-graph data: 383KB / 97%, for
+	// ENGLISH.pak) was silently left unscanned and unpatched. See docs/IGA_FORMAT.md's "Two
+	// known content-editing bugs" #2 for the full empirical writeup (40 confirmed real pointer
+	// fields found physically stored in that region, verified against independently-known
+	// string offsets).
+	//
+	// Pointers in this format are plain absolute file offsets, not IGZ_FORMAT.md's segmented
+	// (segID<<24|offset) scheme -- confirmed against real examples: e.g. a real field at file
+	// offset 13528 (inside the post-pool tail) holds the value 3036, which only resolves
+	// correctly as a literal absolute file offset (the real target, a string, does start at byte
+	// 3036). Reading it as a segmented pointer (segID=0, meaning "relative to whichever section
+	// the field itself lives in" per IGZ_FORMAT.md -- Section 1, based at file offset 10496)
+	// would resolve to 10496+3036=13532, which is not a valid string start. So one uniform rule
+	// (">= StringPoolEnd -> add shift", else check stringPointersMap) is correct everywhere in
+	// the file, including a field and its target both living in the moved tail region: since
+	// both shift by the identical amount, no relative/no-op special case is needed.
+	//
+	// Two properties make this pass safe over a much larger scan region than the original
+	// pre-pool-only version:
+	//
+	//  1. We scan `headerBytes` (the pre-edit file with the pool already excised, so its bytes
+	//     are never rewritten by the pool-resize itself) and write any correction into the
+	//     separate `outBytes` buffer, rather than scanning-and-patching one buffer in place.
+	//     Patching in place has a real, observed failure mode: overwriting a value at position i
+	//     changes what position i+1..i+3 decode as, so a later iteration can spuriously "find"
+	//     and clobber bytes that were never a real pointer field, just because an earlier patch
+	//     happened to leave a matching 4-byte pattern behind. Separating the read source
+	//     (`headerBytes`, stable throughout the pass) from the write destination (`outBytes`)
+	//     avoids that read/write aliasing entirely.
+	//  2. We only examine 4-byte-*aligned* candidate positions (relative to each field's own
+	//     original absolute file offset) instead of every byte offset. Empirically, all 71 real
+	//     pointer matches found against ENGLISH.pak's independently-verified string-offset list
+	//     landed on a 4-byte-aligned absolute file offset, and zero real matches were found
+	//     unaligned (only garbage/substring false positives showed up off-alignment) --
+	//     consistent with this being a serialized struct field, not free-floating text.
+	//     Restricting to aligned positions both matches how the format actually stores fields
+	//     and, over a much larger scan region (383KB vs. the original ~9KB), meaningfully cuts
+	//     down the false-positive/cascading-overwrite surface a per-byte scan would expose (this
+	//     class of bug was directly observed during development of this fix, on real data, before
+	//     switching to this aligned-scan design -- see the "false positives" discussion in this
+	//     fix's own writeup in docs/IGA_FORMAT.md for the concrete before/after evidence).
+	//
+	// headerBytes indices before meta.StringPoolStart are the file's head (unchanged position --
+	// origOffset == i, outPos == i). Indices at or after meta.StringPoolStart are the file's tail
+	// (position shifts -- origOffset == i+oldSize, since headerBytes' tail section is the
+	// original file's bytes from the old StringPoolEnd onward with the pool gap excised; outPos
+	// == i+newSize, since that's where the copy() above that builds outBytes placed it). The tail
+	// half aligns `i` to a 4-byte boundary in ORIGINAL absolute-file-offset terms (i+oldSize),
+	// not in headerBytes' own indexing, since oldSize is not guaranteed to itself be a multiple
+	// of 4 and what matters is the alignment real serialized fields actually use.
+	headStart := int(sec0Offset)
+	for headStart%4 != 0 {
+		headStart++
+	}
+	for i := headStart; i+4 <= int(meta.StringPoolStart); i += 4 {
+		val := binary.LittleEndian.Uint32(headerBytes[i : i+4])
 		if val >= meta.StringPoolEnd && val <= uint32(len(headerBytes))+oldSize {
 			newVal := uint32(int32(val) + shift)
 			binary.LittleEndian.PutUint32(outBytes[i:i+4], newVal)
-		} else {
-			// It points into the string pool or to an external string. Check if it matches exactly.
-			if newVal, exists := stringPointersMap[val]; exists {
-				binary.LittleEndian.PutUint32(outBytes[i:i+4], newVal)
+		} else if newVal, exists := stringPointersMap[val]; exists {
+			binary.LittleEndian.PutUint32(outBytes[i:i+4], newVal)
+		}
+	}
+
+	tailStart := int(meta.StringPoolStart)
+	for (uint32(tailStart)+oldSize)%4 != 0 {
+		tailStart++
+	}
+	for i := tailStart; i+4 <= len(headerBytes); i += 4 {
+		val := binary.LittleEndian.Uint32(headerBytes[i : i+4])
+
+		outPos := i + int(newSize)
+		if outPos < 0 || outPos+4 > len(outBytes) {
+			continue
+		}
+
+		if val >= meta.StringPoolEnd && val <= uint32(len(headerBytes))+oldSize {
+			newVal := uint32(int32(val) + shift)
+			binary.LittleEndian.PutUint32(outBytes[outPos:outPos+4], newVal)
+		} else if newVal, exists := stringPointersMap[val]; exists {
+			binary.LittleEndian.PutUint32(outBytes[outPos:outPos+4], newVal)
+		}
+	}
+
+	// Separately from the absolute-offset string-pointer fixups above, Section 1's own
+	// top-level igObjectList header carries an array of Section-1-*relative* pointers (one per
+	// top-level object -- see IGZ_FORMAT.md and objgraph.go's TopLevelObjects, which already
+	// parses this structurally, not heuristically: `addr := g.Sec1Off + relPtr`). This is a
+	// genuinely different addressing scheme from the string pointers above (relative to Section
+	// 1's own fixed base offset, not the file start), and a blind byte-scan cannot reliably tell
+	// the two apart by value alone -- small relative offsets look just like small absolute ones.
+	// Discovered while cross-checking this fix against objgraph.go's FullWalk/TopLevelObjects on
+	// a real grown ENGLISH.pak: 61 of 97 top-level objects resolved to garbage, because this
+	// array's entries were never touched by CompilePak at all (true before this fix too -- this
+	// is a distinct, pre-existing bug from the tail-scan-gap fixed above, not a regression it
+	// introduced). Since this array's location and shape are exactly known (not a heuristic
+	// scan), it can be fixed precisely rather than guessed at: reparse the header via
+	// ParseObjectGraph, and for each entry whose absolute target (Sec1Off + relPtr) is at or past
+	// the old StringPoolEnd, add the same `shift` used everywhere else above.
+	if graph, gerr := ParseObjectGraph(headerBytes); gerr == nil {
+		mapToOut := func(headerBytesPos int) int {
+			if headerBytesPos < int(meta.StringPoolStart) {
+				return headerBytesPos
+			}
+			return headerBytesPos + int(newSize)
+		}
+		sec1Off := graph.Sec1Off
+		if int(sec1Off)+0x1C <= len(headerBytes) {
+			count := binary.LittleEndian.Uint32(headerBytes[sec1Off+0x0C:])
+			arrayOff := binary.LittleEndian.Uint32(headerBytes[sec1Off+0x18:])
+			arrBase := sec1Off + arrayOff
+			if count <= 1_000_000 {
+				for i := uint32(0); i < count; i++ {
+					fieldPos := int(arrBase + i*4)
+					if fieldPos+4 > len(headerBytes) {
+						break
+					}
+					relPtr := binary.LittleEndian.Uint32(headerBytes[fieldPos : fieldPos+4])
+					absTarget := sec1Off + relPtr
+					if absTarget < meta.StringPoolEnd || absTarget > uint32(len(headerBytes))+oldSize {
+						continue // target didn't move, leave untouched
+					}
+					newRelPtr := uint32(int32(relPtr) + shift)
+					outPos := mapToOut(fieldPos)
+					if outPos+4 <= len(outBytes) {
+						binary.LittleEndian.PutUint32(outBytes[outPos:outPos+4], newRelPtr)
+					}
+				}
+			}
+		}
+
+		// A third, distinct stale-metadata bug, found the same way bug 2c was (cross-checking
+		// against objgraph.go's structural reads rather than more byte-scanning): every real .pak
+		// file's single top-level `LanguagePackInfo` object carries a `stringDict` field
+		// (tfbscript_pc_field_schema.json: offset 24, kind "memoryref", PC-verified) whose raw
+		// on-disk 32-bit value is NOT a plain pointer -- empirically (not from the schema, which
+		// only records the field's offset) it decodes as `0x80000000 | poolByteSize`, the same
+		// "top bit set = external fixup" convention docs/TEXTURE_FORMAT.md already documents for
+		// an unrelated class (`igImage2.format`). `poolByteSize` is exactly `StringPoolEnd -
+		// (LanguagePackInfo.Addr + 32)` -- i.e. LanguagePackInfo is always immediately followed by
+		// the raw string pool, and this field is the pool's own serialized byte length. Confirmed
+		// byte-exact (predicted pool-end position landed exactly on this function's own
+		// independently-computed StringPoolEnd) against 6 real .pak files spanning 3 levels, both
+		// mad2/mad2demo/mad2russia install trees, and multiple languages -- see
+		// docs/IGA_FORMAT.md's "Bug 3" writeup for the full evidence. This is almost certainly the
+		// actual cause of the game's instant crash on loading any level with an edited .pak that
+		// both prior fixes above (string-pointer tail-scan-gap, top-level object-array) failed to
+		// resolve: it is not a pointer value at all (topByte 0x80 means it never matches either
+		// fixup pass's "value >= StringPoolEnd" or "value in stringPointersMap" checks above), so
+		// every previous edit has been serializing this field silently stale -- growing or
+		// shrinking the pool moves the real next-object data by `shift` bytes while this field
+		// keeps reporting the ORIGINAL pool size, which likely makes the loader look for the next
+		// object's classIdx word at the wrong file offset (landing mid-string after a grow) and
+		// misparse it as object data.
+		if top, terr := graph.TopLevelObjects(); terr == nil {
+			for _, obj := range top {
+				if obj.ClassName != "LanguagePackInfo" {
+					continue
+				}
+				fieldPos := int(obj.Addr) + 24
+				if fieldPos+4 > len(headerBytes) {
+					continue
+				}
+				raw := binary.LittleEndian.Uint32(headerBytes[fieldPos : fieldPos+4])
+				topByte := raw & 0xFF000000
+				low24 := raw & 0x00FFFFFF
+				newLow24 := uint32(int32(low24) + shift)
+				if newLow24 > 0x00FFFFFF {
+					// Would overflow the 24-bit field -- refuse rather than silently wrap/corrupt.
+					return fmt.Errorf("LanguagePackInfo.stringDict low-24-bit pool size overflowed (orig=%d shift=%d new=%d) at field offset %d", low24, shift, newLow24, fieldPos)
+				}
+				newRaw := topByte | newLow24
+				outPos := mapToOut(fieldPos)
+				if outPos >= 0 && outPos+4 <= len(outBytes) {
+					binary.LittleEndian.PutUint32(outBytes[outPos:outPos+4], newRaw)
+				}
+			}
+
+		}
+
+		// A fourth, far larger-blast-radius bug, found via direct Ghidra decompilation of
+		// the real PC engine (not more byte-scanning): `igMemoryRefMetaField` -- the meta
+		// field type behind `LanguagePackInfo.stringDict` above -- is confirmed (via
+		// `igMemoryRefMetaField::computeSize`, igCore.dll 0x10055670, which unconditionally
+		// returns 8) to always occupy exactly 8 bytes at runtime: a size dword (what the fix
+		// above patches -- `0x80000000 | byteSize`, read by `igMemoryRefMetaField::
+		// getMemorySize`, igCore.dll 0x10005cb0, which masks off the top marker bits) directly
+		// followed by a *second* dword that is a genuine pointer -- confirmed directly against
+		// LanguagePackInfo.stringDict itself: its own second dword (object addr + 28) holds a
+		// small integer that resolves *exactly* to this file's own StringPoolStart under the
+		// same Section-1-relative scheme (`Sec1Off + rawValue`, segID=0) IGZ_FORMAT.md
+		// documents and the top-level-array fix above already uses -- e.g. ENGLISH.pak:
+		// Sec1Off=10496, stored value=448, 10496+448=10944=StringPoolStart, byte-exact.
+		// LanguagePackInfo's own copy of this pointer never needs adjusting in practice (its
+		// target, the pool's start, never moves under a pool-resize edit -- only the pool's
+		// *end* moves) which is why this went unnoticed until specifically hunted for.
+		//
+		// SoundDataInfo -- confirmed via `arkRegisterInitialize@SoundDataInfo`
+		// (SoundInfoLib.dll 0x10003190) to register a field `_visemeStream` at offset 0x2c,
+		// also kind igMemoryRefMetaField, i.e. the exact same 8-byte {size,pointer} shape --
+		// is the class making up the overwhelming majority of every real .pak's top-level
+		// objects (96 of 97 in ENGLISH.pak; ~87-96% across every other real .pak checked).
+		// Unlike LanguagePackInfo's copy, SoundDataInfo.visemeStream's pointer (at
+		// object addr + 0x30) resolves to that instance's own per-object viseme (lip-sync)
+		// binary blob, which -- empirically, against every real .pak file checked (VolcanoRave
+		// ENGLISH/GERMAN, Waterhole_Demo ENGLISH, ConvoyChase_Demo ENGLISH) -- lands physically
+		// *after* the object's own position, i.e. squarely in the part of the file that shifts
+		// under a pool-resize edit, for 87-98% of instances (94/96 in ENGLISH.pak; the
+		// remainder have `size==0`, i.e. no viseme data, and their pointer is correctly
+		// harmless/unresolved). Neither of this field's two dwords is examined by any of the
+		// three prior fixes: the size dword is marker-shaped exactly like stringDict's and
+		// never reachable by the plain-pointer heuristic passes above; the pointer dword's raw
+		// value is a small Section-1-relative offset (e.g. 2496), far below
+		// meta.StringPoolEnd and never a key in stringPointersMap, so both of bug 2's tests
+		// silently pass over it too. This means essentially every SoundDataInfo object in
+		// essentially every edited .pak has had a stale visemeStream pointer -- a dramatically
+		// larger-blast-radius instance of exactly the same class of bug bug 3 fixed for one
+		// single field on one single object. See docs/IGA_FORMAT.md's "Bug 4" for the full
+		// writeup and evidence.
+		//
+		// This walk deliberately does NOT reuse `graph.TopLevelObjects()` (unlike bugs 2c/3
+		// above) -- a real, distinct pitfall was found and fixed while building this exact fix
+		// (see docs/IGA_FORMAT.md's "Bug 4" for the concrete before/after numbers): that method
+		// resolves each top-level entry as `addr := Sec1Off + relPtr` and then indexes directly
+		// into whatever buffer it was given (`headerBytes` here) at `addr`. `relPtr` is the
+		// *stale*, unfixed on-disk value (bug 2c's own fixup writes its correction only into
+		// `outBytes`, never back into `headerBytes`, by design -- see that fix's own comments),
+		// so `addr` is really an *original-file* absolute position. `headerBytes` is `oldSize`
+		// bytes shorter than the original file from `meta.StringPoolStart` onward (the pool was
+		// physically excised, not just logically resized), so indexing `headerBytes[addr]` for
+		// any `addr >= meta.StringPoolEnd` silently reads the bytes belonging to a *different*
+		// object roughly `oldSize` bytes further into the original file -- which, since
+		// SoundDataInfo makes up the overwhelming majority of objects in this region and they
+		// all share the same classIdx, usually *also* looks like a plausible, validly-classed
+		// SoundDataInfo instance, just the wrong one, with the wrong field values. This was
+		// caught empirically, not theoretically: an early version of this fix using
+		// `graph.TopLevelObjects()` against `headerBytes` silently found only 90 of the file's
+		// 97 real top-level objects and produced a visemeStream pointer fixup that -- diffed
+		// against a parse of the real, complete pre- and post-edit files -- never actually
+		// changed any bytes at all, because it was reading/testing the wrong object's fields.
+		// The walk below avoids this by working entirely in *original-file* absolute-position
+		// terms (matching how `relPtr` values are actually authored) until the one point it
+		// needs to physically read `headerBytes`, converting explicitly via origToHeaderBytesPos
+		// at that point -- the same head/tail split `mapToOut` above already encodes, just in
+		// the opposite (read-side, not write-side) direction.
+		if int(sec1Off)+0x1C <= len(headerBytes) {
+			origToHeaderBytesPos := func(origPos uint32) (int, bool) {
+				if origPos < meta.StringPoolStart {
+					return int(origPos), true
+				}
+				if origPos >= meta.StringPoolEnd {
+					return int(origPos) - int(oldSize), true
+				}
+				return 0, false // falls inside the (old) pool itself -- not a valid object position
+			}
+			count := binary.LittleEndian.Uint32(headerBytes[sec1Off+0x0C:])
+			arrayOff := binary.LittleEndian.Uint32(headerBytes[sec1Off+0x18:])
+			arrBase := sec1Off + arrayOff
+			if count <= 1_000_000 {
+				for i := uint32(0); i < count; i++ {
+					entryPos := int(arrBase + i*4)
+					if entryPos+4 > len(headerBytes) {
+						break
+					}
+					relPtr := binary.LittleEndian.Uint32(headerBytes[entryPos : entryPos+4])
+					objOrigAddr := sec1Off + relPtr
+					hbPos, ok := origToHeaderBytesPos(objOrigAddr)
+					if !ok || hbPos < 0 || hbPos+0x34 > len(headerBytes) {
+						continue
+					}
+					classIdx := binary.LittleEndian.Uint32(headerBytes[hbPos : hbPos+4])
+					if int(classIdx) >= len(graph.ClassNames) || graph.ClassNames[classIdx] != "SoundDataInfo" {
+						continue
+					}
+					fieldPos := hbPos + 0x30
+					relPtr2 := binary.LittleEndian.Uint32(headerBytes[fieldPos : fieldPos+4])
+					absTarget2 := sec1Off + relPtr2
+					if absTarget2 < meta.StringPoolEnd || absTarget2 > uint32(len(headerBytes))+oldSize {
+						continue // target didn't move (or size==0 / unresolved), leave untouched
+					}
+					newRelPtr2 := uint32(int32(relPtr2) + shift)
+					outPos := mapToOut(fieldPos)
+					if outPos >= 0 && outPos+4 <= len(outBytes) {
+						binary.LittleEndian.PutUint32(outBytes[outPos:outPos+4], newRelPtr2)
+					}
+				}
 			}
 		}
 	}

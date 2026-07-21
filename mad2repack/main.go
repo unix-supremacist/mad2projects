@@ -264,6 +264,36 @@ func main() {
 			os.Exit(1)
 		}
 
+	case "objects-compile":
+		if len(args) < 3 {
+			fmt.Fprintf(os.Stderr, "Usage: mad2repack objects-compile <orig_level.bld> <edits.json> <output_level.bld>\n")
+			os.Exit(1)
+		}
+		if err := cmdObjectsCompile(args[0], args[1], args[2]); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+
+	case "script-dump":
+		if len(args) < 2 {
+			fmt.Fprintf(os.Stderr, "Usage: mad2repack script-dump <level.bld> <output.json>\n")
+			os.Exit(1)
+		}
+		if err := cmdScriptDump(args[0], args[1]); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+
+	case "rhythm-log-decode":
+		if len(args) < 3 {
+			fmt.Fprintf(os.Stderr, "Usage: mad2repack rhythm-log-decode <rhythmlogger.log> <level.bld> <output.txt>\n")
+			os.Exit(1)
+		}
+		if err := cmdRhythmLogDecode(args[0], args[1], args[2]); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+
 	case "verify-binary":
 		if len(args) < 2 {
 			fmt.Fprintf(os.Stderr, "Usage: mad2repack verify-binary <original.pak/iga> <repacked.pak/iga>\n")
@@ -304,6 +334,26 @@ func main() {
 			os.Exit(1)
 		}
 
+	case "tex-extract":
+		if len(args) < 2 {
+			fmt.Fprintf(os.Stderr, "Usage: mad2repack tex-extract <in.texs> <out.png>\n")
+			os.Exit(1)
+		}
+		if err := cmdTexExtract(args[0], args[1]); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+
+	case "tex-insert":
+		if len(args) < 3 {
+			fmt.Fprintf(os.Stderr, "Usage: mad2repack tex-insert <in.texs> <new.png> <out.texs>\n")
+			os.Exit(1)
+		}
+		if err := cmdTexInsert(args[0], args[1], args[2]); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+
 	default:
 		fmt.Fprintf(os.Stderr, "Unknown command: %s\n\n", cmd)
 		printUsage()
@@ -329,9 +379,14 @@ func printUsage() {
 	fmt.Fprintf(os.Stderr, "  level-dump <bld> <out.json> Dump level float32 coordinates to JSON\n")
 	fmt.Fprintf(os.Stderr, "  level-compile <js> <orig.bld> <out.bld> Compile level coordinates from JSON metadata\n")
 	fmt.Fprintf(os.Stderr, "  objects-dump <bld> <out.json> Dump the real object graph (class + known fields), not a byte-pattern guess\n")
+	fmt.Fprintf(os.Stderr, "  objects-compile <orig.bld> <edits.json> <out.bld> Apply byte-exact field edits (PC-verified float fields only) to a real level.bld\n")
+	fmt.Fprintf(os.Stderr, "  script-dump <bld> <out.json>  Recursively dump the TFBScriptInfo graph (ScriptInfo/ScriptSet/Op* opcodes)\n")
+	fmt.Fprintf(os.Stderr, "  rhythm-log-decode <log> <bld> <out.txt>  Decode mad2rhythmlogger.dll's runtime log against a level.bld\n")
 	fmt.Fprintf(os.Stderr, "  snd-extract <in.snds> <out>     Decode one .snds to a playable file (.wav or .ogg, chosen automatically)\n")
 	fmt.Fprintf(os.Stderr, "  snd-extract-all <dir> <outdir>  Recursively decode every .snds under dir, mirroring its directory structure\n")
-	fmt.Fprintf(os.Stderr, "  tex-info <in.texs>              Print .texs container/class metadata and a best-effort dimension guess (see docs/TEXTURE_FORMAT.md)\n")
+	fmt.Fprintf(os.Stderr, "  tex-info <in.texs>              Print .texs container/class metadata, real dimensions/format, and a base-mip decode check\n")
+	fmt.Fprintf(os.Stderr, "  tex-extract <in.texs> <out.png> Decode a .texs file's base mip level (DXT1/DXT3) to a PNG\n")
+	fmt.Fprintf(os.Stderr, "  tex-insert <in.texs> <new.png> <out.texs> Re-encode a PNG (same dimensions as the original) as a .texs file's base mip level\n")
 }
 
 // cmdVerify extracts all files from an archive, repacks them, and verifies

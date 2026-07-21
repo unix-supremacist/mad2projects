@@ -18,6 +18,20 @@ import (
 //go:embed wii_field_schema.json
 var wiiFieldSchemaJSON embed.FS
 
+// tfbScriptPcFieldSchemaJSON holds PC-verified field offsets for the entire
+// TFBScriptInfo namespace (ScriptSet/ScriptInfo/Op*/Value*/Placement/etc —
+// the level-logic scripting system), extracted directly from
+// ScriptInfoLib.dll's own `arkRegisterInitialize@<Class>@TFBScriptInfo@Gap`
+// bulk field-registration functions (one per class, the same mechanism
+// that cracked ActorInfo's schema — see docs/CLASS_SCHEMA.md's
+// arkRegisterInitialize finding, and docs/SCRIPT_FORMAT.md for the
+// namespace's semantic map this now has real offsets for). Unlike
+// wii_field_schema.json this is PC-native from the start, not a Wii port —
+// every entry here is "source":"pc". See mad2iga/tfbscript_pc_field_schema.json.
+//
+//go:embed tfbscript_pc_field_schema.json
+var tfbScriptPcFieldSchemaJSON embed.FS
+
 // FieldInfo describes one field of a class. Offset is either a single int
 // (the common case) or a []interface{} of ints when multiple accessors
 // disagreed (e.g. overloads) — treat those as lower-confidence, except see
@@ -43,6 +57,13 @@ var wiiSchema map[string]map[string]FieldInfo
 // no collisions in the current 54-class schema).
 var wiiSchemaByBareName map[string]map[string]FieldInfo
 
+// tfbScriptPcSchema maps a TFBScriptInfo-namespace bare class name (e.g.
+// "ScriptSet", "OpSetValue") directly to its PC-verified fields — see
+// tfbScriptPcFieldSchemaJSON above. Already keyed by bare name (the
+// extraction script only ever saw the bare class name), unlike wiiSchema
+// which needs the namespace-stripping step.
+var tfbScriptPcSchema map[string]map[string]FieldInfo
+
 func init() {
 	data, err := wiiFieldSchemaJSON.ReadFile("wii_field_schema.json")
 	if err != nil {
@@ -60,6 +81,14 @@ func init() {
 			fields[name] = info
 		}
 		wiiSchemaByBareName[bare] = fields
+	}
+
+	tfbData, err := tfbScriptPcFieldSchemaJSON.ReadFile("tfbscript_pc_field_schema.json")
+	if err != nil {
+		panic("mad2iga: embedded tfbscript_pc_field_schema.json missing: " + err.Error())
+	}
+	if err := json.Unmarshal(tfbData, &tfbScriptPcSchema); err != nil {
+		panic("mad2iga: embedded tfbscript_pc_field_schema.json invalid: " + err.Error())
 	}
 }
 
@@ -164,16 +193,20 @@ var pcDisprovenFields = map[string][]string{
 func ClassSchema(bareName string) (map[string]FieldInfo, bool) {
 	wiiFields, hasWii := wiiSchemaByBareName[bareName]
 	pcFields, hasPC := pcVerifiedFields[bareName]
-	if !hasWii && !hasPC {
+	tfbFields, hasTfb := tfbScriptPcSchema[bareName]
+	if !hasWii && !hasPC && !hasTfb {
 		return nil, false
 	}
 
-	merged := make(map[string]FieldInfo, len(wiiFields)+len(pcFields))
+	merged := make(map[string]FieldInfo, len(wiiFields)+len(pcFields)+len(tfbFields))
 	for name, info := range wiiFields {
 		merged[name] = info
 	}
 	for _, name := range pcDisprovenFields[bareName] {
 		delete(merged, name)
+	}
+	for name, info := range tfbFields {
+		merged[name] = info
 	}
 	for name, info := range pcFields {
 		merged[name] = info

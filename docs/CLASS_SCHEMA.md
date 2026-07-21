@@ -620,3 +620,167 @@ data point plus a second independently-confirmed one (not yet gathered) to
 constrain the search. Time-boxed here for this session — diminishing
 returns on continued blind counting-scheme guessing without new
 information.
+
+## In-place field editing (`WriteField`, `objects-compile`) — first write path
+
+Everything above this section is read-only (`objects-dump`). This session
+added the first actual **write** path onto `objgraph.go`'s real graph model
+— editing where objects sit in a level, not just reading it.
+
+**The key structural fact that makes this simple**: IGZ objects are
+fixed-size. Overwriting a scalar/Vec3f field in place never changes any
+object's size, so there is no reserialization, no section-table fixup, no
+pointer patching — just overwrite the exact bytes of the field being
+changed, at its exact absolute file offset, and leave every other byte of
+the file untouched. `ObjectRef.Addr` (already existed) is already an
+absolute file offset, so a field's absolute address is simply
+`obj.Addr + fieldOffset` — no new offset-tracking machinery was needed.
+
+**`ObjectGraph.WriteField(obj, fieldName, value)`** (`mad2iga/objgraph.go`)
+is the writer. Two deliberate safety gates, tighter than "does the schema
+know this field":
+
+1. **Only `Source == "pc"` fields are writable.** Wii-only offsets have
+   already been directly disproven for at least one `ActorInfo` field on
+   the PC build (`destination`, see the "Major caveat" section above) —
+   writing through an unverified offset risks silently corrupting unrelated
+   bytes. Refuses with an error rather than writing anything.
+2. **Only `Kind ["float"]` fields are writable** — a lone `float32` (single
+   `Offset`) or the 3-float Vec3f shape (`Vec3Offset`, e.g. `position`).
+   Every other kind is refused, on purpose:
+   - `"ptr"` fields would need a real, validated segmented-pointer value
+     pointing at another real object — not attempted; too easy to corrupt
+     the graph with a bad pointer.
+   - `"int"`/`"bool"`/`"enum"`/etc. fields have never had their actual
+     on-disk byte *width* independently confirmed, and there's already
+     direct evidence in this same schema that assuming 4 bytes would be
+     wrong: `CollisionInfo.isSolid`/`.isActorSurface`/
+     `.interactsWithWorld` sit at offsets 132/133/134 — one byte apart,
+     i.e. genuinely single-byte fields. Blindly writing a 4-byte word at
+     one of those would clobber its two neighbors. `float32` has no such
+     ambiguity (IEEE 754 single precision is unambiguously 4 bytes on
+     every field observed so far), which is why it's the only kind trusted
+     here. Widening this to `"int"`/`"bool"` would need each field's real
+     byte width confirmed first (the same `arkRegisterInitialize`
+     decompilation technique that found the offsets in the first place
+     would also show the width) — not done this session.
+
+**`mad2repack objects-compile <orig_level.bld> <edits.json> <out_level.bld>`**
+(`mad2repack/objects_compile.go`) wires this into the CLI. `edits.json` is
+deliberately a small, edit-specific format, not `objects-dump`'s own
+per-object dump shape:
+
+```json
+{
+  "edits": [
+    { "addr": 7815800, "class_name": "ActorInfo", "field": "position", "value": [74.260605, 7.370015, -57.886932] }
+  ]
+}
+```
+
+`addr` is the same absolute-file-offset `addr` `objects-dump` already prints
+per object (so the two tools compose directly — dump, find the object you
+want, copy its `addr` into an edit). `class_name` is optional, cross-checked
+against what's actually at `addr` as a copy-paste sanity check. `value` is a
+plain float or a 3-element array depending on the field's schema shape.
+
+### Verification (this session, real level, real numbers)
+
+Level: `mad2russia/Content/Streams/win/extracted/Waterhole/level.bld`
+(129,692,552 bytes). `objects-dump` on it: 1,802 objects, matching the
+count already documented above (no regression from this change).
+
+**Test 1 — single field, single object.** Picked a real `ActorInfo` at
+`addr 7815800` (`0x774278`), `position` (`worldMatrix`'s translation row,
+`+0x50/+0x54/+0x58`) reading `[69.260605, 6.370015, -59.886932]`. Ran
+`objects-compile` to rewrite it to `[74.260605, 7.370015, -57.886932]`
+(all 3 components changed). Result:
+
+- `objects-compile` reported the write at absolute offset `0x7742C8`
+  (`= 0x774278 + 0x50`, exactly the expected `position` address), 12 bytes.
+- Whole-file byte diff (both files 129,692,552 bytes, same size): **exactly
+  3 bytes differ**, at offsets `0x7742CA`, `0x7742CE`, `0x7742D2` — one byte
+  per float32 (small-magnitude nearby float values differ in only one
+  mantissa byte each; not a bug, just IEEE 754 bit-pattern coincidence for
+  these particular before/after values). All 3 differing bytes fall
+  strictly inside the intended 12-byte write window
+  (`0x7742C8`-`0x7742D3`); **zero bytes differ anywhere else in the
+  129 MB file.**
+- Re-ran `objects-dump` on the output: exactly 1 of 1,802 objects differs
+  from the original dump (the edited one), its `position` now reads
+  `[74.260605, 7.370015, -57.886932]` — the new value, exactly — and every
+  other field of every other object (including the edited object's own
+  other fields: `worldMatrix`, `collisionInfo`, `waypoints`,
+  `physicsParameters`, etc.) is byte-for-byte identical to the original
+  dump.
+
+**Test 2 — two edits, two fields, two objects, one `objects-compile`
+invocation** (genericity check: not just `position`, not just one object).
+Edited `ActorInfo@0x774278`'s `destination` (`[0,0,0]` → `[1.5,2.5,3.5]`,
+absolute offset `0x7743C8 = 0x774278+0x150`, matching `destination`'s
+schema offset) and a second, different `ActorInfo@0x77D038`'s `position`
+(`[70.175, 6.370023, -59.886932]` → `[170.175, 106.370026, -159.88693]`,
+absolute offset `0x77D088 = 0x77D038+0x50`). Result: whole-file diff is
+**18 bytes total**, every one of them inside one of the two expected
+12-byte windows (`0x7743C8`-`0x7743D3` and `0x77D088`-`0x77D093`) — none
+outside either. Re-`objects-dump`: exactly 2 of 1,802 objects differ from
+the original, exactly at the two edited fields, everything else (both
+objects' remaining fields, and all 1,800 other objects) unchanged. As
+expected, `ActorInfo@0x774278`'s `worldMatrix` dump also shows the updated
+translation row from Test 1 still in effect in this second output — same
+underlying bytes as `position`, not a second independent field, consistent
+with `position` being documented above as literally `worldMatrix`'s row 3.
+
+**What's writable today, concretely**: any `ActorInfo` field tagged
+`Source: "pc"` with `Kind: ["float"]` in `mad2iga/schema.go`'s
+`pcVerifiedFields["ActorInfo"]` — in practice `position` (tested) and
+`destination` (tested); `worldMatrix`/`logicMatrix` are the same kind and
+mechanically writable too (untested this session — `logicMatrix` is
+documented dead/unused, and writing a whole 16-float matrix via a bare
+`float32`/`[3]float32` value isn't wired into `WriteField` since neither
+input shape fits a 16-float payload). No `TFBScriptInfo`-namespace field
+was attempted: that schema's `"vec3f"`-kind fields (e.g.
+`ContactInfo.location`) use a different offset convention (single base
+offset + implied stride, not the `[]interface{}` 3-offset-list shape
+`Vec3Offset` parses) that `FieldValue`'s own *read* path doesn't correctly
+handle yet either (see its `isFloat`/`Vec3Offset` dispatch in
+`objgraph.go` — a `"vec3f"`-kind field falls through to the plain
+scalar-`uint32` branch today, silently wrong) — writing through an
+unproven read path isn't attempted here; fixing `FieldValue`'s `"vec3f"`
+handling would be a prerequisite, not something bundled into this change.
+`"ptr"`/`"int"`/`"bool"`/`"matrix44f"` kinds are refused by `WriteField`
+itself, everywhere, for the reasons above.
+
+**Follow-up, different session, different namespace — same problem,
+independently confirmed.** While PC-verifying the entire `TFBScriptInfo`
+namespace (`SCRIPT_FORMAT.md`'s "PC-verified field schema" — the
+`ScriptSet`/`ScriptInfo`/`Op*` classes behind level scripting), went
+looking for a shortcut around this whole problem: `ScriptObject` (the base
+practically every class in that namespace derives from) inherits
+`igNamedObject`, and unlike `ActorInfo`, `igCore.dll` really does export a
+clean, real `igNamedObject::getName()`/`arkRegisterInitialize@igNamedObject`
+pair confirming `_name` lives at `*(this+8)` as a **plain `char*`** (not a
+tagged `igStringRef` — that was a Wii-only assumption; PC just stores a
+raw pointer, or `0` for unset, per the decompiled code directly). This
+looked like it might sidestep the whole Name Table investigation above
+for at least this one namespace. It doesn't: reading `+8` directly off six
+real `ScriptSet` instances in a real level (`VolcanoRave/level.bld`) gives
+small, non-zero, **strictly sequential** integers (`0x168, 0x169, 0x16a,
+0x16b, 0x16c, 0x16d` for six consecutive objects) — not remotely
+plausible as resolved pointers, and confirmed *not* matching any
+segmented-pointer convention already established in this codebase (tried
+resolving against `Track_Angel`'s own known, unique string-pool byte
+offset — found directly via `strings`+`grep`, only one match in the whole
+file — under segID-relative-to-Section-0, segID-relative-to-Section-1, and
+every other section's own base; none produce a byte pattern findable
+anywhere in the file). This is the exact same shape as the `ordinal(8325)
+→ byte offset` problem above — a small integer that indexes into
+*something*, discovered completely independently via a different field in
+a different class hierarchy — which is reasonably strong evidence this
+"small sequential ordinal, not a resolvable pointer" pattern is a single
+underlying engine-wide mechanism (most likely the same Name Table concept,
+or a sibling of it), not two unrelated problems. Doesn't move the actual
+fix forward, but narrows where to look: the next person chasing this
+should look for one function that resolves an arbitrary small ordinal to
+a string, used by *both* `ActorInfo`'s Name Table and `igNamedObject`'s
+`_name` field, rather than treating them as separate mysteries.
