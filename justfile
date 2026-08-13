@@ -419,6 +419,19 @@ build-launcher:
 run-launcher: build-launcher
     "{{build_dir}}/mad2launcher"
 
+# Build the standalone level.bld object-graph browser/editor (Go+Fyne, native
+# Linux, same toolkit as mad2launcher). Browses any level's objects with real
+# resolved names and edits the PC-verified writable fields (ActorInfo position/
+# destination, etc.); saves a byte-exact level.bld, repacked into the .bld if
+# that's what was opened. See mad2leveleditor/.
+build-leveleditor:
+    cd mad2leveleditor && go build -o "{{justfile_directory()}}/{{build_dir}}/mad2leveleditor" .
+
+# Build and run the level editor. Optionally pass a path to open on launch,
+# e.g. `just run-leveleditor mad2/Content/Streams/win/VolcanoRave.bld`.
+run-leveleditor path="": build-leveleditor
+    "{{build_dir}}/mad2leveleditor" {{path}}
+
 # Best-effort Windows cross-build of mad2launcher (i686-w64-mingw32,
 # GOARCH=386 for consistency with every other 32-bit Windows target in this
 # repo). Fyne v2's desktop driver needs cgo (OpenGL bindings), so this is

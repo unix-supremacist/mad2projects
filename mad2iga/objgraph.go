@@ -41,6 +41,12 @@ type ObjectGraph struct {
 	tablesBuilt bool
 	nameTable   []string
 	stringLocs  map[uint32]bool
+	// pointerLocs is the ROFS set (chunk type 6): absolute file offsets of the
+	// field words that hold a segmented pointer. Authoritative about which
+	// words are pointers — used by the generic object-tree walker (level-tree)
+	// to follow references without needing a per-field type, exactly as the
+	// fixup tables intend.
+	pointerLocs map[uint32]bool
 }
 
 // ObjectRef identifies one object instance found in the graph.
@@ -402,6 +408,7 @@ func (g *ObjectGraph) FullWalk() (map[uint32]ObjectRef, error) {
 const (
 	chunkTypeTSTR = 1
 	chunkTypeRSTR = 4
+	chunkTypeROFS = 6
 )
 
 // buildStringTables parses Section 0's own chunk table (readChunkTable /
@@ -423,13 +430,30 @@ func (g *ObjectGraph) buildStringTables() {
 	}
 	g.tablesBuilt = true
 	g.stringLocs = make(map[uint32]bool)
+	g.pointerLocs = make(map[uint32]bool)
 
 	entries, err := readChunkTable(g.Data, g.Sec0Off)
 	if err != nil {
 		return
 	}
+	decodeLocs := func(e chunkTableEntry, into map[uint32]bool) {
+		if int(e.PayloadEnd()) > len(g.Data) {
+			return
+		}
+		vals, derr := decodeChunkPatchValues(g.Data[e.PayloadStart():e.PayloadEnd()], e.Count)
+		if derr != nil {
+			return
+		}
+		for _, v := range vals {
+			if abs, ok := g.ResolveSegPointer(v); ok {
+				into[abs] = true
+			}
+		}
+	}
 	for _, e := range entries {
 		switch e.Type {
+		case chunkTypeROFS:
+			decodeLocs(e, g.pointerLocs)
 		case chunkTypeTSTR:
 			// `Count` null-terminated strings, read in order so index i maps
 			// to nameTable[i] even across any empty ("") entries.
@@ -447,18 +471,7 @@ func (g *ObjectGraph) buildStringTables() {
 		case chunkTypeRSTR:
 			// Nibble-delta-encoded segmented pointers to the field words that
 			// hold a TSTR index. Resolve each to an absolute file offset.
-			if int(e.PayloadEnd()) > len(g.Data) {
-				continue
-			}
-			vals, derr := decodeChunkPatchValues(g.Data[e.PayloadStart():e.PayloadEnd()], e.Count)
-			if derr != nil {
-				continue
-			}
-			for _, v := range vals {
-				if abs, ok := g.ResolveSegPointer(v); ok {
-					g.stringLocs[abs] = true
-				}
-			}
+			decodeLocs(e, g.stringLocs)
 		}
 	}
 }
@@ -479,6 +492,31 @@ func (g *ObjectGraph) ResolveName(addr uint32) (string, bool) {
 		return "", false
 	}
 	return g.nameTable[idx], true
+}
+
+// FollowPointer treats the word at an absolute file offset as a pointer, but
+// only if that location is flagged in the ROFS table (i.e. is genuinely a
+// pointer). Returns (childAddr, isPointer, isNull): isPointer is false for a
+// non-ROFS location; isNull is true for a ROFS location whose word is 0. This
+// is the type-agnostic way the object-tree walker follows references — it
+// consults the fixup tables rather than needing a per-field metafield type.
+func (g *ObjectGraph) FollowPointer(addr uint32) (child uint32, isPointer bool, isNull bool) {
+	g.buildStringTables()
+	if !g.pointerLocs[addr] {
+		return 0, false, false
+	}
+	raw, ok := g.ReadUint32(addr)
+	if !ok {
+		return 0, true, true
+	}
+	if raw == 0 {
+		return 0, true, true
+	}
+	abs, ok := g.ResolveSegPointer(raw)
+	if !ok {
+		return 0, true, true
+	}
+	return abs, true, false
 }
 
 // ResolveFieldName resolves a named field of obj to a real string via the

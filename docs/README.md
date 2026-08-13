@@ -172,18 +172,36 @@ that reads/writes them (`mad2iga`, `mad2arc`, `mad2repack`, `mad2tool`).
 - **`mad2repack`** — the main CLI: `unpack`/`pack`/`verify`/`replace`/
   `pak-dump`/`pak-compile`/`level-dump`/`level-compile`/`objects-dump`/
   `verify-binary`/`snd-extract`/`snd-extract-all`/`tex-info`/`script-dump`/
-  `script-pretty`. `script-dump <bld> <out.json>` recursively renders a
-  level's TFBScriptInfo object graph as raw nested JSON; `script-pretty
-  <bld> <out.txt>` (newer) renders the same graph as real pseudocode —
-  reconstructed `IF`/`FOREACH`/`LOOP { ... }` blocks (from `OpBranch`'s
-  confirmed `branchPC`), resolved variable names, and real `RelOp`/
-  `ArithOp`/`FlowVals` symbols decoded straight from `ScriptInfoLib.dll` —
-  see `docs/SCRIPT_FORMAT.md`'s Round 10 for exactly what's confirmed vs.
-  still-honestly-unresolved (notably `RHSValueStack.type`, a per-file
-  external reference, not a portable tag).
+  `script-pretty`/`level-tree`. `script-dump <bld> <out.json>` recursively
+  renders a level's TFBScriptInfo object graph as raw nested JSON;
+  `script-pretty <bld> <out.txt>` (newer) renders the same graph as real
+  pseudocode — reconstructed `IF`/`FOREACH`/`LOOP { ... }` blocks (from
+  `OpBranch`'s confirmed `branchPC`), resolved variable names, and real
+  `RelOp`/`ArithOp`/`FlowVals` symbols decoded straight from
+  `ScriptInfoLib.dll` — see `docs/SCRIPT_FORMAT.md`'s Round 10 for exactly
+  what's confirmed vs. still-honestly-unresolved (notably `RHSValueStack.type`,
+  a per-file external reference, not a portable tag). `level-tree <bld>
+  <out.txt>` dumps the *whole* object graph (not just TFBScript) as an indented
+  text tree — the Go equivalent of `MaxStache/madagascar-2-tools`' `level.txt`
+  dump — starting at Section 1's top-level list and following every ROFS
+  pointer field and list element (see `mad2iga/objtree.go`), with per-instance
+  names resolved via the RSTR/TSTR tables. Accepts either a raw `level.bld`
+  (IGZ) or a `.bld` archive (extracts the inner `level.bld` itself).
 - **`mad2tool`** — orchestrates `mad2repack` over the whole game's
   `Content/Streams/win/` directory (`extract`/`rebuild`), including dumping
   every nested `.pak` and `level.bld` to editable JSON and back.
+- **`mad2leveleditor`** — a standalone Go+Fyne desktop GUI (own `go.mod`,
+  `just build-leveleditor`/`run-leveleditor`, same toolkit as `mad2launcher`)
+  for browsing and editing a `level.bld`. Opens a raw `level.bld` or a `.bld`
+  archive, shows the whole object graph as a lazily-expanded tree with real
+  resolved names, and edits the fields `WriteField` accepts (the PC-verified
+  writable ones — `ActorInfo.position`/`destination`, etc.); everything else
+  is shown read-only. Saving writes a byte-exact edited `level.bld`, repacked
+  back into the archive if that's what was opened. Built on the shared
+  `mad2iga` object-tree layer (`objtree.go`: `ObjectFields`/`ChildRefs`/
+  `ListElements`), the same code `level-tree` renders as text — the round-trip
+  (load archive → edit → repack → reload) is covered by `mad2leveleditor`'s own
+  test.
 - **`mad2metadumper`** — not a Go CLI tool but an in-process diagnostic
   mod (`mad2/mods/mad2metadumper.dll`, source in `mad2metadumper/`): on F4,
   dumps the Alchemy engine's own live class registry (every registered
