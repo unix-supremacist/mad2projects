@@ -115,3 +115,27 @@ MinGW i686 cross-toolchain (`i686-w64-mingw32-gcc`/`g++`/`windres`), CMake +
 a Proton install for `just run`. See `CLAUDE.md` for the full toolchain
 breakdown, including what's needed for the optional vendored-engine chaos
 effects.
+
+## Acknowledgments
+
+The asset-format reverse engineering (`docs/`, `mad2iga`) benefited from
+several independent efforts on the same Vicarious Visions "Alchemy" engine:
+
+- **[`MaxStache/madagascar-2-tools`](https://github.com/MaxStache/madagascar-2-tools)**
+  — a from-scratch Python reader for Mad2's own `.bld`/IGZ format plus a
+  static reflection dumper. Its clean use of the `TSTR`/`RSTR` Section-0
+  fixup tables is what pinned down per-instance naming (`ActorInfo._name`,
+  `_varName`, …); we independently re-derived and reimplemented that in Go
+  (`mad2iga/objgraph.go`), and cross-checked its static reflection dump
+  against our own live one. See `docs/CLASS_SCHEMA.md` and `docs/README.md`.
+- **[`MaxStache/madagascar-tfbtool`](https://github.com/MaxStache/madagascar-tfbtool)**
+  — a decompiler for the original 2005 *Madagascar*'s `.ai` TFBScript
+  bytecode, a useful semantic reference for Mad2's `TFBScriptInfo` opcodes.
+- **[`NefariousTechSupport/AlchemyMetadataDumper`](https://github.com/NefariousTechSupport/AlchemyMetadataDumper)**
+  and **[`bonesinmysoup/igRewrite8`](https://github.com/bonesinmysoup/igRewrite8)**
+  — tooling for later Skylanders-era builds of the same engine lineage, used
+  as structural cross-references (not byte-compatible with Mad2's IGZ v4).
+
+All Alchemy-engine format work here is our own from-scratch Go/C++
+implementation; these are credited as references and corroboration, not as
+incorporated code.

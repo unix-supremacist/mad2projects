@@ -47,7 +47,7 @@ sections**:
 |---|---|---|
 | 0 | Class directory + string pool | ~530-540 bytes |
 | 1 | Object-graph bookkeeping + the live `igImage2` instance's own fields (see below — this is new) | ~140 bytes, constant across every sample checked |
-| 2 | Raw pixel-data blob, base mip level first (now decodable — see below) | the bulk of the file |
+| 2 | Raw pixel-data blob, smallest mip level first, base (largest) mip level at the end | the bulk of the file |
 
 Section 2's end is always exactly EOF (`section2.offset + section2.size ==
 file size` in every sample) — no trailer after it, unlike `level.bld`'s
@@ -306,7 +306,7 @@ of one file — it holds across every combination of width/height/levelCount
 in the whole corpus, so `levelCount+1` is the real mip chain length, not
 `levelCount`.
 
-### Step 2: the byte/pixel ratio identifies the format — DXT1 or DXT3, nothing else in this corpus
+### Step 2: the byte/pixel ratio identifies the format — DXT1 or DXT5, nothing else in this corpus
 
 That same ratio (`Section2.size / mipChainPixelCount(w, h, levelCount+1)`)
 is **the format's bytes-per-pixel**, and across the full 186-file corpus it
@@ -315,92 +315,33 @@ takes exactly one of two values:
 | Ratio | Format | Count | Typical content |
 |---|---|---|---|
 | 0.5 | DXT1 (8 bytes/4x4 block) | 171/186 | `loadscreen_*` backdrops, `demo_endscreen_*`, `victory_*`, `mad2_legal` — all the large (1024x512 / 2048x1024) UI backdrops |
-| 1.0 | DXT3 (16 bytes/4x4 block: 8 explicit-alpha + 8 color) | 15/186 | `360-wireless-controller_128.texs` (all 6 copies) and similar small UI icons |
+| 1.0 | DXT5 (16 bytes/4x4 block: 8 interpolated-alpha + 8 color) | 15/186 | `360-wireless-controller_128.texs` (all 6 copies) and similar small UI icons |
 
 No sample falls anywhere in between (nearest miss is ~1e-5 off either exact
 value), so `DetectPixelFormat` in `texture.go` treats this as a safe
-nearest-match rather than needing an exact `==` compare. This is genuinely
-new information — the *previous* investigation (see "History" below) had
-assumed 4 bytes/pixel uncompressed RGBA/BGRA throughout, which is why every
-raster-reinterpretation hypothesis it tried produced noise: it was
-reinterpreting **compressed block data** as **raw uncompressed pixels**, a
-completely different (and much larger, per-pixel) byte budget — no
-raster-order permutation of the right bytes at the wrong bit-depth could
-ever have produced a coherent image.
+nearest-match rather than needing an exact `==` compare.
 
-This also fully explains the previous investigation's "1024-byte
-periodicity, not the expected 512" autocorrelation finding on the 128x128
-(really 256x256 DXT3) reference sample: at DXT3's 1 byte/pixel-equivalent
-rate with 4x4=16-byte blocks, one **block-row** of a 256-wide image is
-`(256/4) * 16 = 1024` bytes — exactly the period found. The signal was real
-and correctly measured; it just needed the "compressed 4x4 blocks, not
-per-pixel raster" model to be legible as "one row of blocks," not "two rows
-of naively-assumed 512-byte pixel rows."
+### Step 3: format-specific block layout, bit indexing, and orientation
 
-### Step 3: block layout — standard S3TC, row-major blocks, base mip first
+Section 2 stores mip levels and pixel blocks using format-specific layouts:
 
-With the format and per-level byte budget known, the layout itself is the
-ordinary, standard one used by essentially every DXT1/DXT3 asset in
-existence: Section 2 starts with mip level 0 (the base/largest level,
-`baseLevelSize(width, height, format)` bytes — `ceil(w/4)*ceil(h/4)*
-blockBytes`), stored as one 8-byte (DXT1) or 16-byte (DXT3) block per 4x4
-pixel region, blocks in row-major order (left-to-right within a block-row,
-block-rows top-to-bottom). Each block: `color0`, `color1` as little-endian
-RGB565, then (DXT1) a 32-bit LE field of 16 2-bit per-pixel palette indices
-in row-major pixel order, standard 2-endpoint-plus-2-interpolated 4-color
-palette when `color0 > color1` (DXT1's alternate "3 colors + transparent
-black" mode when `color0 <= color1` is also implemented, for any texture
-that turns out to need it — none of this corpus's real DXT1 samples
-currently do, since none has a meaningfully transparent base level). DXT3
-adds 8 bytes of explicit 4-bit-per-pixel alpha before its (always-4-color,
-per the S3TC spec) color block.
+1. **DXT1 (0.5 bytes/pixel)**:
+   - **Mip Ordering**: Base level (Mip 0) starts at **offset 0** (`info.PixelData[:baseSize]`). Mip levels are stored largest-to-smallest.
+   - **Color Block Field Layout**: MAD2 stores DXT1 color blocks in **index-first** field order: `[idx (4B), color0 (2B), color1 (2B)]`.
+   - **Intra-Block Pixel Indexing**: Standard row-major 4x4 pixel bit-indexing (`py * 4 + px`). Keeps straight border lines 100% straight without stairstep/zigzag artifacts (stairstep score **0.498** vs **1.456** for column-major).
+   - **Color Mode**: Full 4-color palette mode (`forceFourColor`).
 
-**Verification, concretely** (not just "looks plausible"):
+2. **DXT5 (1.0 bytes/pixel)**:
+   - **Mip Ordering**: Mip levels are stored smallest-to-largest (base level 0 is at offset **`len(PixelData) - baseSize`**).
+   - **Block Layout**: Standard S3TC DXT5 block layout: 8 bytes interpolated alpha (`a0`, `a1`, 48-bit alpha indices), followed by standard 8-byte color block `[color0 (2B), color1 (2B), idx (4B)]`.
+   - **Intra-Block Pixel Indexing**: Standard row-major 4x4 pixel bit-indexing (`py * 4 + px`).
 
-- Batch-tested against the **entire 186-file corpus**: every file's
-  `width`/`height`/`levelCount`/`format` decode structurally (no crashes,
-  no out-of-bounds reads), and the base mip level decodes to a
-  correctly-dimensioned image every time (`mad2repack tex-info` reports
-  `base mip: decodes OK, WxH` for all 186).
-- **Spatial autocorrelation on real content** (the same kind of test the
-  previous investigation's ruled-out hypotheses were rejected with — see
-  "History" below): decoding `loadscreen_generic.texs` (1024x512, DXT1) and
-  computing the Pearson correlation of each block's `color0` RGB565
-  endpoint against its immediate x/y neighbor's, across the whole block
-  grid, gives **0.41 (x-neighbor) / 0.35 (y-neighbor)**, against a
-  ~0.003/-0.015 baseline from the identical computation over the same
-  values randomly shuffled — a real, unambiguous, far-outside-noise signal.
-  The `360-wireless-controller_128.texs` (256x256, DXT3) reference sample's
-  per-block alpha-nibble variance shows **0.44** adjacent-block correlation
-  against a **-0.015** shuffled baseline — same conclusion, independently,
-  on the alpha channel of the other format.
-- **Direct visual confirmation** (this session's tooling can render PNGs
-  and view them, which the original investigation's notes couldn't rely
-  on): `mad2repack tex-extract` on `360-wireless-controller_128.texs`
-  produces an unmistakable Xbox-360-style game controller silhouette (the
-  D-pad/analog-stick/button layout is clearly recognizable), correctly
-  bounded by DXT3's alpha channel. `loadscreen_generic.texs` decodes to an
-  image with a crisp rectangular border/frame, a horizontal accent line,
-  and (cropped and pixel-inspected directly) a perfectly sharp-edged solid
-  black UI box and a clean regular brick/dot decorative pattern near the
-  bottom — all with exact, non-smeared, non-offset block boundaries. The
-  interior "artwork" regions of the loadscreen images decode with a dense
-  speckled/dithered appearance rather than smooth photographic content;
-  given the crisp, correctly-bounded decode of every simple/flat/sharp-edge
-  element in the same image (the black box, the border, the brick
-  pattern), this reads as genuine dithered or inherently colorful/detailed
-  source art (compressing a busy painted background to DXT1's 4-colors-
-  per-4x4-block budget will look speckled at 1:1 pixel scale without
-  blur/mipmapping) rather than a decode bug — a real bug in block
-  addressing or bit ordering would be expected to corrupt the *simple*
-  regions (flat colors, sharp edges) too, and it visibly doesn't. Tested
-  and ruled out as an *alternative* explanation: tried all 4 combinations
-  of {row-major, column-major} x {LSB-first, MSB-first} 2-bit-index
-  ordering on the same interior region and found no meaningful difference
-  in a pixel-smoothness metric between them (~190-195 mean adjacent-pixel
-  channel-sum diff for all four) — if one specific ordering were "the
-  right one" being obscured by a bug in this code, it should have stood
-  out as clearly smoother than the other three, and none did.
+3. **Vertical Orientation**:
+   - Block **rows** are stored bottom-to-top on disk (`targetBY = blocksH - 1 - by`), but each individual 4x4 block's own 4 texel rows are already stored top-to-bottom in their final orientation — `y = targetBY*4 + py`, **not** `targetBY*4 + (3-py)`. An earlier version of this document (and of `texture.go`) used the "obvious" full mirror (reversing both block-row order AND each block's own internal row order); that is wrong and was fixed in `texture.go`'s `decodeBaseLevel`/`encodeBaseLevel`. It looked right on smooth gradients but produced a visible checkerboard scramble on any sharp edge (a decorative border line, tree-canopy silhouettes against sky) — see `texture-decode-fix-progress.md`'s "Second correction pass" for the full story of how this was found and confirmed.
+
+**Verification (current, honest state — see `texture-decode-fix-progress.md` for the full run log)**:
+- **DXT1 is solid and re-verified**: `mad2repack tex-extract` on `loadscreen_generic.texs` (1024x512) produces a clean, coherent image — pink border and tree-canopy silhouettes are crisp with no checkerboard scramble — and round-trips (`tex-extract` → `tex-insert` → `tex-extract`) to a visually near-identical result. This has been directly re-checked (cropped, zoomed) more than once, including after the vertical-orientation fix above; trust this.
+- **DXT5 is NOT solid.** Both real DXT5 samples checked this repo has (`360-wireless-controller_128.texs`, a 256x256/8-level-mip-chain icon, and `victory_africa.texs`, 1024x512) still decode to visibly wrong output — not random noise, but a self-similar "echo"/tiling artifact (repeated, shrinking copies of the same content stacked or tiled within the canvas). The mip-chain byte accounting (Step 1/2 above, and the smallest-first/base-at-end ordering) is well-evidenced and very likely correct — decoding at offset 0 (largest-first) produces pure incoherent noise at every level, which the smallest-first/base-at-end window does not. The DXT5 color-block layout (standard `[color0,color1,idx]`, *not* the index-first order DXT1 uses) is also confirmed correct — swapping it to index-first, or reinterpreting the alpha half as DXT3's explicit-nibble scheme, both make things visibly worse, not better. What's still wrong is somewhere in the block *addressing/traversal* within an otherwise-correctly-located mip level: alternate block orders (column-major, boustrophedon/serpentine, full Morton/Z-order, and a coarser 2x2-block macro-tile swizzle in both raster and column sub-order) were all tried against the controller icon and none produce a clean image. A live-Ghidra trace of `igGfx.dll`'s `igCanonicalMetaImage`/`igPlatformMetaImage::getTextureLevelOffset` and the `igCanonicalDxtImagePlugin` conversion-registration chain confirms the engine's *generic* level-offset formula is largest-first-from-offset-0 — which contradicts what actually decodes cleanly for these files, meaning either these DXT5 icons route through one of `igPlatformMetaImage`'s two special-cased platform-tag branches (tag 5 or 6 — not reached statically; plausibly an Xbox-360-originated tiled/swizzled layout given the `360-wireless-controller` filename) or the on-disk `.texs` layout simply isn't what that runtime function operates over (it may only address an already-loaded/converted in-memory buffer, not the serialized file). Treat DXT5 decode as **open**, not fixed — do not trust any current or previously-generated PNG of a DXT5 `.texs` sample as correct.
 
 ## What's still not solved
 
@@ -502,6 +443,14 @@ real dimensions/format, decode sanity check), `tex-extract <in.texs>
 <out.png>`, `tex-insert <in.texs> <new.png> <out.texs>`.
 
 ### Round-trip verification results
+
+**The `360-wireless-controller_128.texs` row below is stale and unreliable**
+— it predates the discovery that DXT5 decode is still broken for this file
+(see "Verification" above and `texture-decode-fix-progress.md`); a
+round-trip through a known-broken decode/encode pair doesn't mean anything
+and shouldn't be trusted. Left in place for the historical record, not
+because it's still believed accurate. The two DXT1 rows are unaffected —
+DXT1 decode/encode is solid and separately re-verified.
 
 `decode(original) -> encode(zero-change PNG) -> decode(result)`, tested on
 the DXT3 reference sample and two DXT1 loadscreen samples (one square-ish

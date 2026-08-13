@@ -890,3 +890,292 @@ lives — cutscene triggers, "what does this button do," AI behavior wiring).
   extracted fields are believed genuinely fieldless (marker/inherited-only
   subclasses), not an extraction gap, but this hasn't been independently
   spot-checked class-by-class.
+
+## Round 9 (different session): the field-coverage gap is now solved engine-wide, `internalFlags` decoded, and a live case study (Duty Free's shop item lists)
+
+**The "10-20% coverage, no inheritance" problem above is now solved** —
+not by decompiling more classes by hand, but by reading the Alchemy
+engine's own live class registry directly out of the running game process.
+Full writeup, methodology, and verified offsets are in
+`CLASS_SCHEMA.md`'s "Live reflection dump (`mad2metadumper`)" section — not
+duplicated here. Concretely for this namespace: `mad2iga/schema.go`'s
+`ClassSchema()` now returns every class's complete own+inherited field
+list for all 1392 registered engine classes (20,237 fields total), not
+just each class's own newly-registered fields. `OpForEach`, for example,
+previously showed only its 5 own fields (`LHS`/`dir`/`RHS`/`cachedSet`/
+`cachedObject`) in a `script-dump` — it now also shows its inherited
+`OpCode.internalFlags`, `OpBranch.branchPC`, and `OpLoop.index`, all
+PC-verified, all cross-validated exactly against every offset this
+document had already hand-confirmed.
+
+**`OpCode.internalFlags` decoded** (previously just "enum," no known
+values): a bitflag set, found via `Gap::Core::igMetaEnum` decompilation
+(`getinternalFlagsMetaEnum@OpCode`) and confirmed present in the real PC
+`ScriptInfoLib.dll` via `strings` — `IS_EXPANDED=1`, `IS_ELSE_EXPANDED=2`,
+`IS_DISABLED=4`, `IS_CASE=8`, `IS_FIRST_VISIBLE=16`,
+`IS_ELSE_FIRST_VISIBLE=32`, `IS_BREAK_POINT=64`. These are visual-script-
+**editor** state flags (tree-expand state, breakpoint, disabled/grayed-out
+node), not the MAD1 `.ai` format's flow-control/descendant-span bit-packing
+that motivated looking at this field in the first place (see below) — a
+real, useful, PC-confirmed finding, just not the one originally
+hypothesized.
+
+**Reference checked and ruled out for this specific question, still useful
+in general**: `github.com/MaxStache/madagascar-tfbtool`, a parser/
+decompiler for the *original 2005 film Madagascar*'s `.ai` bytecode format
+— confirmed direct lineage with Mad2's own `TFBScriptInfo` (identical
+opcode class names: `OpSetValue`, `OpForEach`, `OpCheckValue`, `OpIfElse`,
+etc.), and its documented format (a real opcode-table + global/local
+string-ref tables + a flattened instruction stream with a packed
+"3-bit flow-control + 21-bit descendant-span" header per instruction) is
+what prompted checking whether Mad2's `internalFlags` was the same kind of
+packed field. It isn't (see above) — Mad2's actual forward-`branchPC`-only
+control-flow model (established in Round 3) still stands as the correct
+mechanism for this specific, later engine build. Still valuable as a
+semantic Rosetta stone (its `rhs.py`'s confirmed RHS operand tag scheme —
+int/float/color/pair/reference, with `+`/`-`/`*`/`/` arithmetic expressions
+— independently corroborates `ValueRHSVariant.arithOperator`'s existing
+semantics in this doc).
+
+### Case study: Duty Free's unused shop items (`Alex Rites Hat`,
+`Gloria Swimsuit`, etc.) — static analysis exhausted, live tracing built
+
+Real user-reported puzzle: `DutyFreeBLD/ENGLISH.pak`'s string table has
+several purchasable/unlockable item names that never appear as selectable
+options in the shipped game (`Alex Rites Hat`, `Gloria Swimsuit`, `Marty
+Baseball Cap`, `Melman Clock Head`, `Moto Moto Mustache`, `Concept Art`,
+`Card Match - bonus card 1/2`, `Mini-Golf Bonus Hole 3`), each sitting
+right next to a sibling item that IS purchasable/used. Confirmed directly:
+the Lemur Loot → Apparel submenu shows exactly 4 cosmetics in the shipped
+game (one per main character; `Moto Moto`'s item and each character's
+alternate never appear).
+
+**Static analysis, exhausted (not from lack of trying — real, evidenced
+dead ends):**
+- `IS_DISABLED` opcodes exist in this level (11 total, found via the newly
+  decoded `internalFlags`) but all 11 are `OpCreateVariable` declarations
+  clustered around an unrelated disabled feature (`Debug_RandomMonkeySet`,
+  a dev tool in the Monkey Gallery aquarium exhibit) — not near any of the
+  unused item strings. Ruled out as the mechanism.
+- Every `OpForEach` in the level resolves `RHS`/`varOp1` to the *same*
+  shared/empty `ValueRHSVariant`/`RHSValueStack` object across every
+  instance in the file (a default placeholder, not a per-instance set
+  reference), and `cachedSet`/`cachedObject` are always the runtime-unbound
+  null sentinel in the shipped file — the identical dead end
+  `mad2rhythmlogger`'s own Round 6 hit for `VolcanoRave`'s `OpForEach`.
+  Confirmed this is a structural property of the file, not fixable by
+  reading more fields.
+
+**Live tracing built and used, same technique as `mad2rhythmlogger`**: a
+new mod, `mad2shoptrace` (`mad2shoptrace/src/shoptrace.cpp`), vtable-
+patches `execute()` (slot 29, same shared slot as every other `Op*` class)
+on `OpForEach`/`OpChangeMembership`/`OpFindSubSet`/`OpCheckMembership`/
+`OpCreateVariable`, gated to `level=="DutyFree"`. All vtable addresses and
+field offsets are PC-native this time — the vtables from Ghidra against
+real `ScriptInfoLib.dll`, the field offsets from `mad2metadumper`'s live
+reflection dump (not ported from Wii, not decompiled by hand).
+
+**What live tracing found, across two captures** (a broad session
+browsing the whole shop, then a narrow one visiting only Lemur Loot →
+Apparel):
+
+1. `cachedSet`/`cachedObject` DO resolve to real, varied heap addresses at
+   runtime — the "always null" above is purely a file-at-rest property,
+   not an engine constant. Confirms live tracing is the right tool once
+   static analysis hits a runtime-only wall.
+2. A tempting early signal (one `OpForEach` node consistently iterating
+   groups of exactly 4 across ~20 different category contexts in the broad
+   capture) turned out to be a **false lead** — it never fired at all in
+   the narrow Apparel-only capture, so it wasn't Apparel-specific. Recorded
+   here specifically so it isn't re-chased: cardinality-matching alone,
+   without confirming the opcode actually fires for the screen in
+   question, produces false positives.
+3. The real Apparel-entry mechanism: a low-frequency `OpForEach` (`dir=2`,
+   "random-shuffle") resolving to an object named `Generic_Container`
+   (read live via `*(obj+8)`, see `CLASS_SCHEMA.md`'s naming note below)
+   — a shared/pooled placeholder, not a per-item object.
+4. Hooking `OpSpawn` (added specifically once `Generic_Container` showed
+   up as a name) found the actual construction site: one spawner
+   consistently creates **exactly 10** `Generic_Container` instances per
+   menu screen, with a sibling spawner attaching one `UI_MenuUI_OptionText`
+   label to each, plus further sibling spawns for ring/ellipse decoration
+   sprites, all also clustered at 10-12. This is the signature of a
+   **generic, fixed-capacity list-UI widget** (pre-allocates a constant 10
+   row slots, reused for every shop screen — categories, item lists,
+   everything), not a per-screen or per-category item array. This is
+   exactly why static analysis never found a literal "item count" field
+   anywhere in the file: there isn't one — the UI's slot count is a
+   constant, and something else (not yet traced) decides how many of the
+   10 slots actually get real content per screen.
+5. The high-volume `OpChangeMembership`/`OpFindSubSet`/`OpCheckMembership`
+   activity (thousands of calls in a few seconds of just looking at a
+   menu) is per-frame UI state polling (highlight/selection/hover checks),
+   not one-time list construction — a real negative finding, not just
+   unexamined noise.
+6. Zero `OpCreateVariable` executions with `internalFlags != 0` were
+   logged in either capture — meaning the `Debug_RandomMonkeySet` script
+   path never initialized during either play session. Inconclusive on
+   whether the interpreter skips `IS_DISABLED` nodes (could mean it does,
+   or could just mean that script only runs if you physically walk up to
+   the Monkey Gallery aquarium exhibit, which wasn't done either time).
+
+**Attempted, deployed, honestly uncertain**: patched the 7
+`Debug_RandomMonkeySet`-related `OpCreateVariable`s' `internalFlags` from 4
+(`IS_DISABLED`) to 0 directly in `level.bld` (`Content/Streams/mod/
+DutyFree.bld`, via `mad2repack replace`) as a cheap, reversible experiment
+— flagged upfront that it's unlikely to have any visible effect, since no
+opcode in the compiled `opList` references those declared variables by
+name at all (checked directly before patching). Point 6 above is
+consistent with that expectation but doesn't confirm it either way.
+
+**Still open, concrete next steps for whoever continues this**: which
+opcode(s) actually decide how many of the 10 generic slots get bound to
+real content (most likely `OpSetReference`/`OpSetValue` writing a name/
+icon/enabled-state into each `Generic_Container`/`UI_MenuUI_OptionText`
+pair — not yet hooked) — that's the actual place the "4 vs. up to 10"
+decision lives, and would need extending `mad2shoptrace` the same way
+`OpSpawn` was added mid-session once `Generic_Container` pointed at it.
+
+## Round 10 (different session): a real pseudocode renderer (`mad2repack script-pretty`), and `RelOp`/`ArithOp`/`FlowVals` decoded from source
+
+Round 3/4's confirmed-but-never-shipped block-reconstruction mechanism
+(`OpBranch.branchPC` recursion) is now a real tool:
+**`mad2repack script-pretty <level.bld> <out.txt>`** (`mad2repack/script_pretty.go`),
+alongside the existing raw-JSON `script-dump`. It walks each `ScriptInfo`'s
+`opList` in order and, for any opcode whose merged schema includes a real
+`branchPC` field (checked structurally — does the class's own schema claim
+offset 0x24/36 for a different field, per Round 3 — not hardcoded per
+class), recurses `[i+1, branchPC-1]` as a nested block. Output looks like:
+
+```
+IF <ValueStack@0x2F487C> == <int:-999|float:NaN (type=0x4F unresolved)>  // no body
+SET <ValueStack@0x2F487C> = <int:0|float:0 (type=0x4F unresolved)>
+```
+
+(a real "initialize this value if it's still at its unset sentinel" idiom,
+found verbatim in `RitesOfPassage/level.bld`). `mad2tool extract-scripts`
+now produces one `<Level>.pretty.txt` per level alongside the existing
+`<Level>.json`, both under `mad2raw/scripts/`.
+
+**`RelOp`/`ArithOp`/`FlowVals` are now real decoded symbols, not opaque
+tags.** Found via the same `getXxxMetaEnum`-decompilation technique Round 9
+used for `OpCode.internalFlags`, applied to three more enums, this time
+reading the actual `Gap::Core::igMetaEnum::createMetaEnum(name, nameArray,
+valueArray, count, ...)` call's two backing arrays directly out of
+`ScriptInfoLib.dll`'s static data (not just the enum's own name string) via
+Ghidra's `inspect_memory_content`:
+
+- `getRelOpMetaEnum@TFBScriptInfo@Gap` (`0x10022b40`) → `RelOp`, 6 entries:
+  `0=LE_OP(<=) 1=EQ_OP(==) 2=GE_OP(>=) 3=LT_OP(<) 4=GT_OP(>) 5=NE_OP(!=)`.
+- `getArithOpMetaEnum@ValueRHSVariant` (`0x10022bf0`) → `ArithOp`, 5 entries:
+  `-1=NO_OP 0=ADD_OP(+) 1=SUB_OP(-) 2=MULT_OP(*) 3=DIV_OP(/)`.
+- `getFlowValsMetaEnum@OpFlow` (`0x100259f0`) → `FlowVals`, 13 entries:
+  `-2=FLOW_ELSE -1=FLOW_ELSE_IF 0=FLOW_END 1=FLOW_CONTINUE
+  2..10=FLOW_OUT2..FLOW_OUT10`.
+
+Sanity-checked against real decoded output, not just trusted from the
+decompile: `RitesOfPassage`'s own `IF x op1 -999` / `IF x op5 0` (pre-decode
+raw tags) resolve to `EQ_OP`/`NE_OP` respectively and read exactly as the
+"if unset-sentinel, initialize" / "if nonzero" idioms real script logic
+would actually contain — a live plausibility check, not just a static
+claim. `mad2iga/schema.go`'s embedded schema is unchanged; these three
+tables live in `mad2repack/script_pretty.go` itself
+(`relOpSymbols`/`arithOpSymbols`/`flowValSymbols`) since they're rendering
+concerns, not object-graph field offsets.
+
+**`RHSValueStack.type` is a real external reference, not a portable
+2-value tag — this session's biggest correction to earlier text in this
+document.** The "VolcanoRave findings, round 2" section above states
+`0x6A confirmed == int32, 0x6B confirmed == float32` as if these were fixed
+constants. They are not. Decompiling `RHSValueStack::resolve`
+(`ScriptInfoLib.dll 0x10021b80`) shows `_type`'s raw 4 bytes are read
+directly as an `igMetaObject*` and compared by identity
+(`isOfType(IntMeasurement_Meta)`, `== ValueInfo_Meta`, etc.) against a
+handful of shared singletons that live in the DLL's own static data —
+`IntMeasurement`, `FloatMeasurement`, `ColorMeasurement`,
+`ScreenMeasurement`, `ValueInfo`. `_type` is schema'd `kind:["ptr"]`
+(correct — it genuinely is a pointer field), so its on-disk encoding is an
+ordinary IGZ segmented pointer, and segmented-pointer bit patterns are
+file-relative (depend on where in *that file's own* Section 1 the
+referenced data sits). Confirmed empirically: `RitesOfPassage/level.bld`'s
+own distinct `_type` raw values are `0x4F, 0x65, 0xF4, 0xC7` — nothing like
+VolcanoRave's `0x6A`/`0x6B` at all. Resolving `_type` as a segmented
+pointer (`ResolveSegPointer`) lands on a small, tightly-clustered region
+(~20-100 bytes apart, e.g. `0x6AD1F`/`0x6AD35`/`0x6AD97`/`0x6ADC4` for
+RitesOfPassage's four distinct tags) that is **not** a real object — no
+valid class directory entry there — strongly suggesting each `level.bld`
+carries its own small external-symbol-reference table (one slot per
+distinct external `ScriptInfoLib.dll` static the file's compiled script
+data references), not yet reverse-engineered. This is a genuine, scoped
+IGZ-format question (what is this table's structure, how does a segmented
+pointer address into it), not a TFBScript-specific one — flagged here as a
+concrete lead for whoever picks up general IGZ documentation work (see
+`docs/IGZ_FORMAT.md`).
+
+Until that table is decoded, `script-pretty` doesn't guess which
+interpretation (`int` vs `float`) applies for an unrecognized `_type` tag —
+it shows both (`<int:5|float:7e-45 (type=0x4F unresolved)>`) and leaves the
+judgment to whoever's reading, the same "don't guess, show both" approach
+`rhythm_log_decode.go` already uses for `OpCheckValue.cachedType`. Empirically
+this is easy to judge by eye per-file: `RitesOfPassage`'s `0x4F` tag pairs
+consistently with plausible integers (`-999` sentinels, `0`, `1`, `5`,
+`40`...) and its `0x65` tag paired with `0.25` (a plausible float, not a
+plausible `1048576000` int) the one time it was checked — a clean, if
+informal, per-file signal that a future session could formalize into an
+automatic per-tag classifier once enough samples are checked by hand.
+
+## Round 11 (different session): name-pool resolution wired into `script-dump`/`objects-dump` (the "which object is named what" problem, for script/UI objects)
+
+> **Update (superseded — naming now solved authoritatively):** the heuristic
+> string pool described in this round (`+0xA840` magic gap, `["ttr",…]` seed
+> prefix, `pool[ordinal+1]`) has since been **replaced** by direct parsing of
+> the `TSTR` string table (chunk type 1) and the `RSTR` location table (chunk
+> type 4) from Section 0's own chunk table — the real, authoritative fixup
+> tables. `objgraph.go` now exposes `ResolveName(addr)`/`ResolveFieldName(obj,
+> field)` (RSTR-gated, no false positives) and this also cracked `ActorInfo`
+> instance naming, which the heuristic never could. See `CLASS_SCHEMA.md`'s
+> "Naming investigation" (rewritten) — the round below is kept for history.
+
+The `_name` (igNamedObject) and `_varName` (`OpCreateVariable`/`OpFindVariable`)
+fields carry a **small integer ordinal into `level.bld`'s Section-0 string
+pool** — the exact table `mad2iga`'s `ObjectGraph.StringPool()` already builds
+(`realStart = sec0Off + u32@(sec0Off+0x2C) + 0xA840`, prefixed with
+`["ttr","OpMoveFrom","igHandleList"]`), resolved as `pool[ordinal+1]`
+(`ResolveStringOrdinal`). The resolver existed but the dumps weren't applying
+it; they now do. `script-dump` and `objects-dump` emit a sibling
+`"<field>__name"` string next to every resolved `_name`/`_varName`
+(`nameOrdinalFields` / `asUint32` in `mad2repack/script_dump.go`).
+
+**This is broadly reliable, not just the one VolcanoRave `OpCreateVariable
+.varName` case Round 8 confirmed.** Verified live against `global.bld`:
+1734 `OpCreateVariable._varName` all resolve, 1514 to clean identifiers
+(`"cam flyaround mode"`, `"music volume remembered"`, `"snap detection
+stage"`...), 220 to real asset paths the scripts genuinely reference
+(`.ai` scripts, `ButtonIcons/.../*.png`), and the handful that *look* garbled
+(`"riteInfoa9"`, `"...InfoProxyb4"`) are genuine engine auto-generated proxy
+object names — the same truncated-with-hex-suffix names that appear verbatim
+in the shipped `.pak` header (`imatableTextureDataInfoProxy60c`), not
+mis-resolution. `StringInfo._name` likewise resolves correctly and en masse
+(the entire `Options_Opt_*`, `Controller_Opt_*`, `DEBUG_*`, `Menu_Debug*`
+identifier set — see `docs/DEBUG_MENU.md`, which this cracked).
+
+**Caveats (unchanged, worth repeating):**
+- `ScriptSet`/`ScriptInfo` `_name` resolves through the *same* table to an
+  **unrelated level-manifest filename** (e.g. `"WhooGloria_Complete"`), not a
+  display name — a real field-meaning difference, not a resolver bug. The
+  `__name` value is still emitted; judge by class.
+- This solves naming for **script/variable/UI (`StringInfo`) objects**. It does
+  **not** solve `ActorInfo` instance naming ("which coin is which") — that class
+  has no name field at all (`arkRegisterInitialize`, see `CLASS_SCHEMA.md`); a
+  different problem, still open.
+
+**Also this round:** `script-pretty` now resolves **container operands** to their named
+members — `OpChangeMembership`/`OpSetReference`/`OpCheckReference` whose LHS/RHS is a
+`ScriptGroupStack`/`SetStack`/`ScriptObjectList`/`igObjectList` render as `{"MemberName",
+...}` instead of `<ScriptGroupStack@addr>` (`containerMemberNames`). This is what made the
+options-menu list-building legible (`OpSetReference(... RHS={"Options_Opt_DEBUG"})`, see
+`docs/DEBUG_MENU.md`). It does **not** simulate the VM's shared-register dataflow, so
+`OpCheckValue` operands that are runtime scratch `ValueStack`s still print as
+`<ValueStack@addr>` — resolving those to source variables would need a real interpreter (the
+registers are global and shared across thousands of ops, so the binding is temporal, not
+addressable).

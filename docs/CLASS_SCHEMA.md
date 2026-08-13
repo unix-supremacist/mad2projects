@@ -338,6 +338,11 @@ walker section above — not wrong per-instance offsets landing on garbage
 explanations turned out to be true for different fields in the same class,
 which is itself a useful lesson: "every instance reads the same value" is
 not on its own diagnostic of which failure mode you're looking at.
+**Follow-up, much later session**: this shared global turned out to be a real,
+useful, structurally-solid mechanism (a plain runtime "who is the player"
+list), not a dead end — see "Character-switching feasibility investigation"
+below for the resolver's full layout, `playerSet`'s real container shape, and
+what happens when you actually reassign it live.
 
 **A second, more consequential bug found along the way**: `ResolveSegPointer`
 was resolving `segID == 0` as literal Section 0. Cross-checking `collisionInfo`/
@@ -428,12 +433,81 @@ Consuming code, in `mad2iga/` (this repo):
 - `../mad2repack/objects.go` — the `objects-dump` CLI command wiring the
   above into a JSON dump (class histogram + per-object known-field values).
 
-## Naming investigation (unsolved — read before attempting again)
+## Naming investigation (SOLVED — read this whole section)
+
+**Update (2026-08, external corroboration — see "Independent static cross-check
++ the naming mechanism" at the end of this section):** the naming mechanism is
+now understood, and two long-standing claims in the older writeup below are
+**wrong** and are corrected here:
+
+1. **`ActorInfo` does have a `_name` field.** It is at **offset 8**
+   (`igStringMetaField`, declared up the chain at `AbstractPlacement`/`igInfo` —
+   confirmed directly in `live_reflection_schema.json`). The older claim that
+   "`ActorInfo` has no name field at all" was simply mistaken.
+2. **`ActorInfo` instance names resolve to real, unique strings** —
+   `Tourist01`, `TrenchWarRico`, `TrashCan`, `Vase1`…`Vase4`,
+   `TWLizard(0)`…`TWLizard(9)`, etc. — via the **authoritative Section-0 fixup
+   tables**, not our heuristic string pool. `MaxStache/madagascar-2-tools`
+   (`mad2_level.py`, a from-scratch Python reader) resolves every `ActorInfo`
+   name in a real retail `penguins.bld` this way. **Reproduced here on our own
+   install**: run against `mad2/Content/Streams/win/VolcanoRave.bld` it resolves
+   `Rave_CS_Controller`, `Mid_CS_Gloria`, `Clothing_Melman_Witch_Doctor`, … —
+   real names for the same level `script-dump` pulls its 1283-opcode script from.
+
+The mechanism (see `IGZ_FORMAT.md`'s fixup-table section):
+
+- Fixup **`TSTR` (chunk type `0x01`)** is the real string table — an explicit,
+  ordered, count-prefixed list of the level's strings. No boundary-scanning, no
+  "magic gap", no seed constants.
+- Fixup **`RSTR` (chunk type `0x04`)** is the set of *field locations* that hold
+  a `TSTR` index (rather than a pointer or a raw value). It is authoritative:
+  if a field's address is in `RSTR`, its 4-byte word is a `TSTR` index → real
+  string; done.
+- So `ActorInfo+8`'s word is a `TSTR` index. Read `TSTR[idx]` → the name. Our
+  "small sequential integers" from the failed attempts below **were exactly
+  those `TSTR` indices** — every disproof below was one `TSTR[...]` lookup short.
+
+**Why our own tooling still looked stuck:** `objgraph.go`'s `StringPool()` does
+**not** parse `TSTR`. It reconstructs a string list *heuristically* — seeded
+with literal fudge constants (`["ttr","OpMoveFrom","igHandleList"]`), starting
+at `sec0+0x2C`'s offset plus a hardcoded `stringPoolMagicGap`, scanning
+null-terminated strings in order, then indexing `pool[ordinal+1]`. That was
+tuned until it happened to line up for `OpCreateVariable._varName` (which is why
+"Round 11" naming works for script/variable/UI objects) but its ordering and
+boundary are wrong for `ActorInfo`, which is why every `ActorInfo` attempt below
+produced a plausible-but-wrong string.
+
+**Now implemented in our Go walker** (`objgraph.go`): `buildStringTables()`
+parses Section 0's chunk table into the `TSTR` string table (`nameTable`, chunk
+type 1) and the `RSTR` location set (`stringLocs`, chunk type 4, decoded via the
+existing `decodeChunkPatchValues` + `ResolveSegPointer`); `ResolveName(addr)` is
+the authoritative, **`RSTR`-gated** primitive (only resolves a word its location
+is actually flagged as a name index — no false positives), and
+`ResolveFieldName(obj, field)` looks a field's offset up in the schema and calls
+it. `objects-dump`/`script-dump`/`script-pretty` now emit resolved names through
+this path; the heuristic `StringPool`/`stringPoolMagicGap`/fudge-seed code is
+gone (`StringPool()` now just returns the real `TSTR` table). Verified end-to-end
+on `VolcanoRave/level.bld`: **175 `ActorInfo` names** (`Rave_CS_Controller`,
+`Mid_CS_Gloria`, `Clothing_Melman_Witch_Doctor`, `DEBUG_LevelReset`, …) and
+**2052 `_varName`s** (`actor scratch`, `advance check allowed time`, …) resolve
+correctly. The `RSTR` gate also cleanly fixes the old "`ScriptSet._name` resolves
+to an unrelated manifest filename" bug from the dead ends below — a location
+`RSTR` doesn't flag simply yields no name instead of a wrong one.
+
+**Older (pre-correction) writeup, kept for the dead ends it rules out:** naming
+was previously called solved only for **script / variable / `StringInfo` (UI)
+objects** — their `_name`/`_varName` ordinal resolving through the heuristic
+pool (`ObjectGraph.ResolveStringOrdinal`, `pool[ordinal+1]`), with
+`script-dump`/`objects-dump` emitting `"<field>__name"`. That still works (it
+cracked the `Options_Opt_*`/`DEBUG_*`/`Controller_Opt_*` set — see
+`docs/DEBUG_MENU.md`); it's just the fragile version of the real `TSTR`/`RSTR`
+mechanism above. The `ActorInfo`-specific dead ends below were all consequences
+of the heuristic pool, not of the field being unresolvable.
 
 Instance naming (e.g. knowing a given `ActorInfo` is `Coin_LandCroc_B_1`) is
 the biggest remaining gap in "can we edit anything": object *discovery* and
 *field access* both now work via real graph traversal (`objects-dump`), but
-no reliable name resolution exists. This section exists so a future attempt
+no reliable `ActorInfo` name resolution exists. This section exists so a future attempt
 doesn't repeat the same dead ends — per direct user feedback, naming has a
 long history of "every fix somehow made it worse," so treat anything below
 as ruled-out, not as a starting point to tweak.
@@ -751,6 +825,136 @@ handling would be a prerequisite, not something bundled into this change.
 `"ptr"`/`"int"`/`"bool"`/`"matrix44f"` kinds are refused by `WriteField`
 itself, everywhere, for the reasons above.
 
+## Live reflection dump (`mad2metadumper`) — supersedes per-class decompilation, engine-wide
+
+Everything above this section extracts field schema **per class**, one at a
+time: Wii ELF pattern-matching, or hand-decompiling a PC DLL's
+`arkRegisterInitialize@<Class>` bulk registrar in Ghidra. Both work, but
+don't scale, and (Wii's case) aren't PC-verified without separate
+cross-checking. This session found a way to skip all of that: the Alchemy
+engine keeps its **entire class registry live, in memory, in the running
+game process** — every class ever registered, its real parent-class
+pointer, and its complete field list (own + inherited, each field tagged
+with which class actually declared it) — because the engine needs this for
+its own reflection (serialization, editor tooling). Walking that structure
+directly, in-process, gives a complete, authoritative schema in one shot,
+for every class in the game, not just the ones someone has sat down and
+reverse-engineered individually.
+
+**Prior art that pointed at this**: `github.com/NefariousTechSupport/AlchemyMetadataDumper`,
+a runtime metadata dumper for four Skylanders titles (a *later* build of
+this same "Ark"/Alchemy reflection system, Wii/PS3). Its code wasn't reused
+directly — Mad2 (2008) is an earlier, differently-laid-out build, and every
+concrete offset below was independently found and PC-verified against
+Mad2's own `igCore.dll`, not ported — but its documented approach (a global
+`igArkCore::_metaObjectHashTable`-style registry, `igMetaObject::_parent`,
+a per-class `igMetaField` list) is exactly what pointed at where to look.
+
+**The mod**: `mad2metadumper` (`mad2metadumper/src/metadumper.cpp`) — same
+"diagnostic, not a gameplay mod" status as `mad2rhythmlogger`/
+`mad2climbprobe`. On `F4`, walks the live registry and writes every
+registered class's parent chain plus its complete field list (name + real
+byte offset) to `logs\mad2metadump.txt`.
+
+**Layout, PC-verified against real `igCore.dll` disassembly this session**
+(every accessor below is a real, exported, demangled C++ method —
+`igArkCore::getObjectMeta`, `igMetaObject::getIndexedMetaField`/
+`getMetaFieldCount`, `igMetaField::getOffset`/`getParentMetaObject`,
+`igMetaObject::isOfType`):
+
+```
+igArkCore
+  +0x18  container: the full class-list (data ptr @ container+0xC, count @ container+0x10)
+  +0x1C  hash table (name -> igMetaObject*, used by getObjectMeta(char*) only)
+
+igMetaObject
+  +0x0C  char*         class name (igNamedObject-style, but NOT the same
+                        +0x08 offset established elsewhere in this doc for
+                        game-object classes -- igMetaObject/igMetaField's
+                        own name sits one field further in; confirmed live
+                        by reading class[0..4] back as exactly "igObject",
+                        "igMetaObject", "igMetaField", "igRefMetaField",
+                        "igObjectRefMetaField")
+  +0x10  container: this class's OWN complete field list (own + inherited,
+                     data @ container+0xC, count @ container+0x10)
+  +0x24  igMetaObject* parent (confirmed via igMetaObject::isOfType's walk
+                                loop: `while(this) { if(this==target) return
+                                true; this = *(this+0x24); }`)
+
+igMetaField
+  +0x0C  char*   field name (same offset as igMetaObject's own name)
+  +0x18  int16   byte offset within the owning object
+  +0x1A  int16   index of the igMetaObject that actually declared this
+                  field (i.e. which class "owns" it, for telling an
+                  inherited-and-unchanged field apart from one the current
+                  class overrides/adds)
+```
+
+Global singleton: `Gap::Core::ArkCore_function()` (a real, exported,
+`__cdecl`, no-argument function — `?ArkCore_function@Core@Gap@@YAPAVigArkCore@12@XZ`
+in `igCore.dll`) returns the `igArkCore*` directly; no pointer-chain probing
+needed.
+
+**Verification, concrete**: found **1392 registered classes, 20,237
+fields** in one live capture. Self-verifying — `igMetaObject`'s own dumped
+field list independently reproduces every offset used above
+(`_name`@0xC, `_metaFields`@0x10, `_parent`@0x24). Cross-checks every
+previously-hand-verified offset in this document and `SCRIPT_FORMAT.md`
+exactly: `ScriptSet._list`@0x20, `OpCode._internalFlags`@0x20,
+`OpForEach._LHS`@0x2c/`_dir`@0x30/`_RHS`@0x34/`_cachedSet`@0x38/
+`_cachedObject`@0x3c — all present, byte-identical, plus (new) the fields
+those classes inherit from `OpCode`/`OpBranch`/`OpLoop`, which no prior
+per-class decompilation pass had captured. `ActorInfo` goes from ~15
+hand-verified fields to **49** own+inherited fields in one dump.
+
+**What this fixes, concretely**: `mad2iga/schema.go`'s `ClassSchema()`
+previously looked up a class's bare name only — no base-class walk — so
+even a fully PC-verified class like `OpForEach` never showed its inherited
+`OpCode.internalFlags`/`OpBranch.branchPC`/`OpLoop.index` fields in a
+`script-dump`, because `tfbScriptPcSchema` only ever recorded a class's own
+newly-registered fields (`arkRegisterInitialize`'s output, by
+construction, never includes inherited fields — see this doc's own earlier
+"Crucial disambiguator" note). The live dump (converted to
+`mad2iga/live_reflection_schema.json`, raw capture kept as
+`mad2iga/live_reflection_dump.tsv`) is merged into `ClassSchema()` as a new
+layer, keyed by the engine's own literal (underscore-prefixed, e.g.
+`_LHS`) field names — deliberately *not* reconciled with the older
+hand-extracted schemas' non-underscored spelling (`LHS`), so it only ever
+*adds* coverage, never silently shadows a specifically hand-verified entry.
+This also means, for the first time, `ClassSchema()` returns *something*
+for literally every one of the 1392 classes, not just the ~130 (Wii + PC
+hand-verified + TFBScript) previously covered.
+
+**What's still missing**: field *kind*/type (int vs. float vs. pointer vs.
+enum) — the dump captures name/offset/owning-class only, every entry is
+`kind: ["unknown"]`. Extending `metadumper.cpp` to classify each field via
+its own concrete `igXxxMetaField` subtype (readable off the field object's
+vtable pointer, compared against the same class registry) is a natural,
+scoped follow-up, not attempted this session.
+
+**Naming investigation, one live data point** (see that section above for
+full context — this doesn't resolve it, but is a real, new, relevant
+finding): while live-tracing the Duty Free shop's UI (`mad2shoptrace`, see
+`SCRIPT_FORMAT.md`), reading `*(obj+8)` (the `igNamedObject` convention
+already established in this doc for *static* `ScriptObject` instances,
+where it resolves to useless small sequential integers) off *live,
+runtime-spawned* game objects reliably produced real, human-readable names
+— `ControllerMonitor_PC`, `Sprite Animator`, `Menu Manager`,
+`UI_MenuUI_OptionText`, `Generic_Container`, etc., dozens of successful
+reads. This suggests the `+8` field genuinely is a name slot that gets
+**resolved from ordinal to real pointer at runtime**, at least for these UI
+classes — i.e. the static file's small-integer encoding may not be the
+final form at all, just an as-yet-undecoded compile-time reference that
+the engine binds to a real string sometime during construction/init. Not
+yet tested against `ActorInfo`/`ScriptSet` specifically (this was UI
+widgetry, a different part of the class hierarchy, and `ActorInfo` was
+separately shown to have no name field at all via
+`arkRegisterInitialize` — see above), but a concrete, testable lead for
+whoever picks the naming problem back up: hook a live `ActorInfo`/
+`ScriptObject` instance's construction/init path and re-read `+8`
+afterward, rather than continuing to reason about the static file's own
+bytes alone.
+
 **Follow-up, different session, different namespace — same problem,
 independently confirmed.** While PC-verifying the entire `TFBScriptInfo`
 namespace (`SCRIPT_FORMAT.md`'s "PC-verified field schema" — the
@@ -784,3 +988,334 @@ fix forward, but narrows where to look: the next person chasing this
 should look for one function that resolves an arbitrary small ordinal to
 a string, used by *both* `ActorInfo`'s Name Table and `igNamedObject`'s
 `_name` field, rather than treating them as separate mysteries.
+
+**Follow-up, successful practical application — the live-object lead
+above is real and directly useful, even without solving the underlying
+mechanism.** Used to chase a live gameplay bug (the game's "minigame mode"
+front-end incorrectly spawning on story levels that merely reference
+shared minigame code — see `mad2minigamemodefix` in `CLAUDE.md`'s
+Architecture section for the full fix). `mad2climbprobe` was extended with
+a scan that walks every 4-byte-aligned candidate address in committed
+process memory, treats `+8` as a candidate `igNamedObject` name pointer,
+and validates it resolves to a plausible printable string — filtered down
+to just names containing `"minigame"` (narrow enough that a false
+positive from pure chance is very unlikely). This surfaced dozens of real,
+correctly-named live objects (`UI_MinigameUI_ClockText`,
+`filename_golf_minigame`, `Paused_Opt_ExitMinigame`, `Minigame_P1_Wins`,
+etc.) with zero prior knowledge of where any of them lived — confirming
+the "+8 resolves to a real string at runtime" lead generalizes well beyond
+the handful of UI classes `mad2shoptrace` originally observed it for. One
+hit, `"Minigame Launch Mode"`, was exactly the flag being hunted for; a
+live memory diff of that specific object (title screen vs. an active
+minigame) pinned its actual value down to a single 4-byte field at `+0x24`
+in under an hour of iteration, entirely without needing the underlying
+ordinal-to-string resolution mechanism itself ever solved. Practical
+takeaway for whoever picks the naming problem back up: a name-content
+–filtered live scan like this is a genuinely fast way to *find* a specific
+object of interest even while the general mechanism stays unsolved — worth
+reaching for before another round of static-file archaeology.
+
+### Independent static cross-check (`MaxStache/madagascar-2-tools`, `ark_meta.json`)
+
+`MaxStache/madagascar-2-tools` is a from-scratch, fully-AI-generated Python
+reader for the `.bld`/IGZ format. Its `dump_ark.py` recovers the same reflection
+metadata our live dump does, but **statically** — parsing each class's
+`arkRegisterInternal` (name/size/parent) and `arkRegisterInitialize` (the three
+parallel field-name/factory/offset stack arrays) straight out of the game DLLs
+with capstone, modelling ESP across `ret imm16` pops. Result: `ark_meta.json`,
+**1473 classes**. Diffing it against our live `live_reflection_schema.json`
+(1392 classes) is a strong two-source validation, and it fills a real gap:
+
+- **Field *types*.** Our live dump records offset + `declaredIn` but marks every
+  field `kind: unknown` (`mad2metadumper` never reads each field's metafield
+  subtype — see `schema.go`'s own note). The static dump types **3184 / 3186**
+  fields (`igObjectRefMetaField`, `igVec4fMetaField`, `igEnumMetaField`, …).
+  Those types come from the `instantiateFromPool_igXxxMetaField` factory pointer
+  in each `arkRegisterInitialize`, which is robust even where the offset
+  modelling drifts (below). This is exactly what `WriteField` needs to safely
+  edit more than plain `float` fields, and what a real field decoder needs.
+- **Offset agreement is near-total: 3092 match, 6 mismatch** across the classes
+  both dumps share. Independent corroboration of both dumps' offsets.
+- **122 classes are only in the static dump** — engine component/message
+  classes (`igAction`, `igBox{Aspect,Component,Controller}`, `igActivableHolder*`,
+  various `*Message`) that were registered in the DLLs but never instantiated in
+  the live capture. **41 classes are only in the live dump** — the
+  `rtplugins/*.dll` runtime classes (`ActorRTPlugin`, `LightRTManager`,
+  `SetCameraTargetMessage`, …) `dump_ark.py` didn't scan.
+
+**The 6 offset conflicts, adjudicated in Ghidra — our live dump wins both:**
+
+- `OpMoveFrom`/`OpMoveTo` `_LHS` (live 44 / static 36), `_dir` (live 48 /
+  static 40): decompiled `arkRegisterInitialize@OpMoveFrom` (`ScriptInfoLib.dll`
+  `0x10025560`) registers **only `_name`**; `_LHS`/`_dir` are *inherited* from
+  `OpAbstractMove`, whose own `arkRegisterInitialize` (`0x10025390`) puts them at
+  **44 / 48** (`_LHS`=0x2c, `_dir`=0x30). The static dump mis-attributed
+  inherited fields as own fields at a wrong base — **live is correct**.
+- `igShaderConstantDataList`/`…ListList` `_data` (live 16 / static 32): the
+  static entry is *internally inconsistent* — it puts `_data` at 32 while
+  claiming class size 24 (offset > size), and types it `igVec4fMetaField` when a
+  List's `_data` must be an `igMemoryRef`. Clear static-extractor drift —
+  **live is correct**.
+
+Takeaway: **our live dump is the more reliable *offset* source; the static
+dump's unique value is field *types* + the 122 extra classes.** The clean way to
+close the type gap without importing another project's (license-unclear) JSON is
+to extend `mad2metadumper` to read each `igMetaField`'s own metaobject name (one
+more vtable hop past what it already reads) and re-capture — or port
+`dump_ark.py`'s factory-pointer read. Either yields the same `kind` values,
+ours-derived.
+
+## Character-switching feasibility investigation (`mad2characterswitchprobe`)
+
+Separate question from everything above: not "can we read/edit level file
+data" but "can a mod let the player take control of a different
+already-spawned character at any time, mid-level." Driven by a diagnostic
+mod, `mad2characterswitchprobe` (`mad2characterswitchprobe/src/
+characterswitchprobe.cpp` — same "NOT a gameplay mod" status as
+`mad2climbprobe`/`mad2shoptrace`), built and iterated on live, in-game, this
+session. Short answer so far: **input control and "who does the engine think
+is the player" both retarget correctly and reliably; the camera does not
+follow until some other discrete game event happens** (see below) — a real,
+partial result, not a dead end.
+
+### `ActorInfo::_controller` — confirmed, safe to reassign
+
+PC-verified directly in Ghidra (`ActorInfoLib.dll`), extending this doc's
+existing PC-verified-fields table above: `controller` (`+0x140`) is an
+`igSmartPointer<Gap::Display::igController>`. Decompiled both accessors:
+
+```
+usingController()  (vtable virtual, slot the class overrides)
+  -> return *(this + 0x140);
+
+setControllerFromVariant()
+  -> igSmartPointerAssign(this + 0x140, newController);   // NOT a raw store
+```
+
+`igController` itself (`Display` namespace) is a tiny class — just
+`_buttonMap`/`_isMapped` (confirmed via `list_class_members`) — consistent
+with it being one shared "the local input device" object that gets attached
+to whichever `ActorInfo` the game currently treats as player-controlled.
+
+`igSmartPointerAssign` (`Gap::igSmartPointerAssign`, exported by `igCore.dll`
+at a real, named, non-inlined address — `0x10063f50` at that DLL's own
+preferred base) decompiles to exactly the ref-counted assign its name
+implies:
+
+```
+void __cdecl igSmartPointerAssign(igObject** slot, igObject* newValue) {
+    ref(newValue);      // both null-check internally (confirmed by
+    release(*slot);      //  decompiling ref()/release() too)
+    *slot = newValue;
+}
+```
+
+Calling this directly (resolved at runtime via `GetProcAddress` on its exact
+mangled name, same pattern every other cross-DLL call in this codebase
+uses) to move the controller between two live `ActorInfo` instances is the
+engine's own safe reassignment path, not a raw pointer poke — refcounts end
+up exactly as if the game itself had done it.
+
+**Live result**: moving just `_controller` this way does make *something*
+happen (the target visibly receives input), but does **not** bring the
+camera along, and further testing (below) showed it doesn't even reliably
+identify "the real player" on its own — see next section.
+
+### The real "who is the player" mechanism: `ActorInterfaceResolver`, `playerSet`
+
+This directly resolves the "Disproven fields" note earlier in this
+document. `ActorInfoLib.dll+0x1A030` (the same global
+`mad2playercoords`/`mad2gameeffectsmod` have quietly relied on for years to
+find the live player's position) is not itself "the player" — it's a
+`igSmartPointer<ActorInterfaceResolver>` (`ActorInfo::__interface`, a
+class-shared static, confirmed via `get_xrefs_to` showing only
+`getPlayerSetToVariant`/`getActiveSetToVariant` reading it). Those two
+accessors decompile to plain field reads off the **resolver**, not `this`:
+
+```
+getPlayerSetToVariant() -> *(resolver + 0x1C)   // playerSet
+getActiveSetToVariant() -> *(resolver + 0x20)   // activeSet
+```
+
+Both are real "Set"-typed fields (script-exposed as `SetVariant`), not a
+single cached actor pointer. A live, read-only structure dump (this probe's
+`I` hotkey) against a real single-player session confirmed `playerSet`'s
+actual shape — a completely ordinary `igObjectList`, not anything bespoke:
+
+```
+playerSet object (e.g. 0x18048278):
+  +0x00  vtable          (0x06A28740 -- confirmed same vtable as every
+                           igObjectList instance)
+  +0x08  count           = 1
+  +0x0C  capacity        = 8
+  +0x10  capacityBytes   = 0x20  (= capacity * 4)
+  +0x14  data pointer    = self + 0x20   (small capacity -> inline array,
+                                           not a separate heap allocation)
+  +0x18  (unused header word in this capture)
+  +0x1C  (unused header word in this capture)
+  +0x20  element[0]      = the player's real ActorInfo (vtable-confirmed)
+  +0x24..+0x3C  element[1..7], zero (count=1, capacity=8)
+```
+
+`activeSet` (resolver`+0x20`) is the same class, just bigger (43 of 100
+capacity in the same capture) — plausibly "every currently-active actor,"
+not just the player. **Not** touched/mutated this session — a 43-element
+list's insert/remove semantics are a meaningfully bigger risk to get wrong
+than `playerSet`'s single occupied slot, and weren't needed to answer the
+question at hand.
+
+**The actual "become the player" operation**, confirmed live and repeatable
+without a crash once the candidate-selection bugs below were fixed: resolve
+the current holder via the same `+0x1C`/`+0x20` chain
+`mad2playercoords`/`mad2gameeffectsmod` already use (now cross-checked
+against `ActorInfo`'s real vtable, `ActorInfoLib.dll+0x8A38` — the
+`??_7ActorInfo@TFBActorInfo@Gap@@6B@` export — something those older mods
+never did), then:
+
+1. `igSmartPointerAssign(target->_controller_slot, holder->_controller)`,
+   `igSmartPointerAssign(holder->_controller_slot, nullptr)` — moves input.
+2. Directly overwrite `playerSet`'s element `[0]` (`playerSetObj+0x20`) with
+   `target`'s address — a **plain pointer write**, confirmed safe: this is
+   an ordinary array slot, not a smart-pointer field (count/capacity are
+   untouched by changing which address sits there).
+
+Both steps together: input moves to the target character, and every system
+that reads `playerSet` (confirmed: `mad2playercoords`'s own coordinate
+overlay immediately starts tracking the new character) retargets
+correctly and immediately. **The camera does not** — see below.
+
+### Two real crashes, both traced to bad candidate selection, not the mechanism
+
+Both live crashes this session were caused by picking a bad target, not by
+the controller/playerSet reassignment itself being unsafe:
+
+1. **First crash**: the chosen swap target had `pos=(0,0,0)` — an
+   uninitialized/template object, not a live placed character. Fixed by
+   requiring position != exactly `(0,0,0)` as part of a `PLAUSIBLE` filter.
+2. **Second crash**: a candidate matched `ActorInfo`'s vtable pointer by
+   pure coincidence — its `gameActor` field resolved to an address *inside
+   a loaded DLL's own code/data* (`ViewerCommonLib.dll`), not a heap
+   allocation. Vtable-pattern scanning (the same technique
+   `mad2gameeffectsmod`'s `ObjectShuffle` already uses for Havok objects)
+   is not immune to false positives: some unrelated 4-byte word elsewhere in
+   memory can coincidentally equal a real vtable address. Fixed by requiring
+   `model`/`gameActor` to resolve to committed, `MEM_PRIVATE`, read-write
+   memory (`IsPlausibleHeapPointer`, a `VirtualQuery`-backed check) — not
+   just "a number in a plausible range" (`IsPlausiblePointer` alone, the
+   original, insufficient check).
+
+A third, non-crashing but real usability bug: naive "nearest to the player"
+distance-based candidate selection reliably lands on ordinary scenery
+(coins, foliage, small props) a few units from the player, not other
+characters — because plain distance can't tell "another character standing
+nearby" apart from "a coin sitting where the player is standing." Fixed by
+tallying how many scanned candidates share the exact same `model` pointer:
+a real character has a unique model; clutter shares one model across dozens
+of instances. Selection now prefers candidates whose model isn't
+commonly repeated, falling back to any plausible candidate only if the
+level has nothing better nearby.
+
+Also worth recording since it wasted a real debugging cycle: **every single
+F1-F12 key is already claimed** by some other simultaneously-loaded mod in
+this repo (`mad2climbprobe` alone owns F1/F2/F3/F5/F6/F7/F8/F9;
+`mad2metadumper`=F4; `mad2igttimer`/`mad2podcastmod`=F9;
+`mad2nesmod`=F5/F6/F7/F8; `mad2companionmod`=F10/F11/F12) — confirmed the
+hard way live (this probe's own F4 press was silently also triggering
+`mad2metadumper`'s full reflection dump; F5 launched a NES chaos effect
+instead of/alongside this probe's own action). Any new diagnostic hotkey
+needs letters, not function keys — same lesson `mad2nesmod`'s own
+`RefreshGameKey` comment already recorded for itself (default `'R'`, chosen
+specifically to dodge this).
+
+### The camera: confirmed NOT a smooth-follow lag — a real missing "retarget" event
+
+Live-tested user report, precise: the camera stays **completely static**
+after a `playerSet`/`_controller` swap, until some unrelated discrete event
+happens later — a cutscene starting, the player being attacked, dying. That
+rules out "it's just a lerping chase-cam catching up" (which would show
+gradual, immediate movement) — something has to actively **tell** the
+camera to retarget, and that something isn't reading `playerSet` on its own
+every frame.
+
+**A real candidate mechanism was found**: the live class registry
+(`mad2metadumper`) lists `SetCameraTargetMessage` (base `igMessage`, one
+field `_target`) and a companion query message `GetCameraCurrentInfo`
+(`_cameraDir`/`_cameraEye`/`_cameraTarget`/`_isFollowCam` fields) — exactly
+the shape of an explicit "look at this now" event a cutscene/damage/respawn
+system would plausibly send. Neither could be found by manually opening
+DLLs in Ghidra one at a time (checked and came up empty: `ViewportInfoLib.dll`,
+`igInsight.dll`, `ScriptInfoLib.dll`, `igCore.dll`) — solved instead by
+adding a **live, read-only export-table scanner** to the probe itself (the
+`H` hotkey): walks every currently-loaded module's own PE export directory
+(`IMAGE_EXPORT_DIRECTORY`, hand-parsed, no third-party library) for names
+containing a given substring, entirely in-process, no Ghidra round-trip
+needed. This is a generally reusable technique for "which of ~30 loaded
+DLLs implements class X" questions in this codebase going forward — faster
+and more authoritative than guessing which static DLL to open next, since
+it asks the actual running process directly.
+
+Result: `SetCameraTargetMessage` (`Gap::TFBViewport` namespace — note, *not*
+`TFBViewportInfo`, the level-authored-config namespace `CameraInfo`/
+`LazyCamInfo` actually live in) is implemented in **`ViewportRTLib.dll`**,
+one of several **`rtplugins/*.dll`** files (`mad2/rtplugins/` — a
+previously-undocumented directory in this investigation, sibling to the
+per-class `*InfoLib.dll` files but containing the actual runtime/behavior
+implementation rather than reflection data: `ActorRTLib.dll`,
+`ViewportRTLib.dll`, `PlacementRTLib.dll`, `LightRTLib.dll`,
+`SpriteRTLib.dll`, `animalChessRTLib.dll`). `SetCameraTargetMessage::getTarget()`
+returns a `Gap::TFBScriptInfo::Placement*` — and `ActorInfo` itself inherits
+from `Placement` (this doc's own class hierarchy), so a live `ActorInfo`
+pointer is directly the right type to become this message's `_target`,
+if/when the actual send path is found.
+
+**A promising-looking lead that turned out to be a dead end, ruled out by
+decompiling it rather than guessing**: `ActorRTLib.dll`'s
+`ActorRTInfoManager::activateActor(ActorInfo*)`/`deActivateActor(ActorInfo*)`
+(plus a `k_cameraMsg` field on the same manager) looked exactly like a
+"possess this actor" API by name alone. Decompiled `activateActor` in full:
+it's actually the **actor spawn/instantiation** path — allocates an
+`igCorpus` (physics/animation instance), spawns the 3D model via
+`InstantiateActorFromModelMessage`, wires up footstep/footprint messaging,
+and calls `CreateAlchemyActor`. "Activate" here means "bring this ActorInfo
+to life in the world as a rendered, simulated object," unrelated to "make
+this the player." `cameraMsg` is just a message object this manager happens
+to own for its own unrelated lifecycle purposes. Recorded here specifically
+so a future attempt doesn't re-investigate the same promising-sounding name
+a second time.
+
+**Still open**: the real sender of `SetCameraTargetMessage` (and the
+message-bus dispatch mechanism itself — how a constructed `igMessage`
+instance actually reaches whatever object handles it; every message class
+touched anywhere in this codebase so far, e.g. `OpChangeMembership`'s own
+`resolveArgStack`-based resolution, hints at a real but not-yet-mapped
+generic dispatch path) is unfound. Next concrete steps for whoever picks
+this back up, roughly in order of likely payoff: (1) the `H`-hotkey export
+scanner against the remaining unchecked `rtplugins/*.dll` files
+(`animalChessRTLib.dll`, `LightRTLib.dll`, `SpriteRTLib.dll`) and against
+`Mad2.exe`/`Mad2_unpacked.exe` itself for construction-site or
+dispatch-related names (`igMessenger`, `postMessage`, `sendMessage`,
+`receiveMessage` all appeared as real, exported symbols elsewhere this
+session — e.g. `postMessage@tfbInfoManager@AlchemyCommonLib` and
+`getMessenger@igInsightCore`/`postMessage@igMessenger`, both seen live
+inside `ActorRTLib.dll`'s `activateActor` — a real, generic message-bus
+does exist in this engine, just not yet traced end-to-end for camera
+targeting specifically); (2) failing that, live-hooking `ViewportRTLib.dll`'s
+own `SetCameraTargetMessage` constructor (vtable-patch or inline-hook, same
+techniques `mad2shoptrace`/`mad2minigamemodefix` already use elsewhere in
+this codebase) to catch the game constructing one *itself* during a
+cutscene/damage event, and read its `_target` value at that moment — turns
+"find the dispatcher by static analysis" into "watch the real one happen
+live," the same successful pivot every stuck investigation in this document
+eventually made.
+
+### The probe itself
+
+`mad2characterswitchprobe/src/characterswitchprobe.cpp` — hotkeys `O`
+(scan for live `ActorInfo` instances by vtable pattern, nearest-to-player
+sorted, clutter-model-deprioritized, auto-selects the best candidate), `P`
+(cycle selection), `L` (perform the controller+playerSet swap onto the
+selection), `I` (read-only dump of the `ActorInterfaceResolver`/
+`playerSet`/`activeSet` structures), `H` (read-only, scans every loaded
+module's export table for a given substring — reusable well beyond this
+one investigation). Same "diagnostic, not meant to stay loaded permanently"
+status as every other probe mod referenced throughout this document.

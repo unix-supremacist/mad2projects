@@ -185,6 +185,35 @@ static bool IsGameActive() {
     return *flagAddr != 0;
 }
 
+// Resets IGT+RTA (not Playtime) immediately -- the hotkey/combo check
+// below is the only caller now (no in-game menu button for this -- a
+// reset is destructive/rare enough that the hotkey is enough, unlike
+// ResetKey/ResetComboButtons' own live rebinding, which the debug menu's
+// "Config" tab covers via mad2config.dll's vkey/gamepadmask type hints).
+static void ResetTimerNow() {
+    g_Timer.igtSeconds = 0.0;
+    g_Timer.rtaSeconds = 0.0;
+    SaveTimerFile(kIgtFile, 0.0);
+    SaveTimerFile(kRtaFile, 0.0);
+    Log("Timer reset (IGT & RTA); Playtime unaffected (%.3f)\n", g_Timer.playtimeSeconds);
+}
+
+// Config tab writes straight to config.cfg though, so this mod still has
+// to notice an edit itself: ReloadKeybindsLive re-reads both keys every
+// ~1s (see its call site in HookEndScene).
+static uint64_t g_LastKeybindReloadMs = 0;
+
+static void ReloadKeybindsLive() {
+    uint64_t now = GetTickCount64();
+    if (now - g_LastKeybindReloadMs < 1000) return;
+    g_LastKeybindReloadMs = now;
+
+    const auto& api = Mad2Config_Resolve();
+    if (!api.GetVirtualKey) return;
+    g_Config.resetVk = api.GetVirtualKey("Timer", "ResetKey", g_Config.resetVk, "");
+    g_Config.resetComboButtons = api.GetGamepadButtonMask("Timer", "ResetComboButtons", "", "");
+}
+
 static void UpdateTimer() {
     uint64_t now = GetTickCount64();
     if (g_LastTickMs == 0) {
@@ -233,11 +262,7 @@ static void UpdateTimer() {
     }
 
     if ((isResetPressed && !wasResetPressed) || (isControllerResetPressed && !wasControllerResetPressed)) {
-        g_Timer.igtSeconds = 0.0;
-        g_Timer.rtaSeconds = 0.0;
-        SaveTimerFile(kIgtFile, 0.0);
-        SaveTimerFile(kRtaFile, 0.0);
-        Log("Timer reset (IGT & RTA); Playtime unaffected (%.3f)\n", g_Timer.playtimeSeconds);
+        ResetTimerNow();
     }
     wasResetPressed = isResetPressed;
     wasControllerResetPressed = isControllerResetPressed;
@@ -328,6 +353,7 @@ static EndScene_t RealEndScene = nullptr;
 
 static HRESULT STDMETHODCALLTYPE HookEndScene(IDirect3DDevice9* This) {
     EnsureConfigLoaded();
+    ReloadKeybindsLive();
     UpdateTimer();
 
     char igtBuf[64], rtaBuf[64], playtimeBuf[64];

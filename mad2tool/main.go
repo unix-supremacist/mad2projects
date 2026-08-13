@@ -14,6 +14,14 @@
 //	repack-changed  Walks a directory tree produced by unpack-all, recompiles only the archives
 //	                whose derived/editable files changed since their manifest baseline, and
 //	                leaves everything else as byte-for-byte passthrough. See docs/UNPACK_REPACK.md.
+//	extract-scripts Runs mad2repack script-dump AND script-pretty against every level.bld
+//	                under mad2/Content/Streams/win/*.bld, writing one JSON dump plus one
+//	                human-readable .pretty.txt per level, an INDEX.json summary, and a
+//	                small ai_references.txt manifest to mad2raw/scripts/. See
+//	                docs/SCRIPT_FORMAT.md.
+//	ai-manifest     Regenerates just ai_references.txt (the small, easy-to-share list of
+//	                referenced .ai paths per level, no opcode data) from an existing
+//	                mad2raw/scripts/INDEX.json, without re-running the full extraction.
 package main
 
 import (
@@ -29,6 +37,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 )
@@ -42,6 +51,8 @@ func main() {
 		fmt.Fprintf(os.Stderr, "  mad2tool testmod                                Apply testing swaps & translations on raw dumps\n")
 		fmt.Fprintf(os.Stderr, "  mad2tool unpack-all <gamedir> [outDir]          Unpack every archive with a hashing manifest\n")
 		fmt.Fprintf(os.Stderr, "  mad2tool repack-changed <gamedir> [unpackDir] [outDir]  Recompile only changed archives\n")
+		fmt.Fprintf(os.Stderr, "  mad2tool extract-scripts                        Dump every level's compiled scripts to mad2raw/scripts/\n")
+		fmt.Fprintf(os.Stderr, "  mad2tool ai-manifest [scriptsDir]               Regenerate just the small ai_references.txt from an existing INDEX.json\n")
 	}
 	flag.Parse()
 
@@ -114,10 +125,240 @@ func main() {
 			fmt.Fprintf(os.Stderr, "repack-changed failed: %v\n", err)
 			os.Exit(1)
 		}
+	case "extract-scripts":
+		if err := runExtractScripts(); err != nil {
+			fmt.Fprintf(os.Stderr, "Script extraction failed: %v\n", err)
+			os.Exit(1)
+		}
+	case "ai-manifest":
+		scriptsDir := ""
+		if len(args) > 1 {
+			scriptsDir = args[1]
+		}
+		if err := runAiManifest(scriptsDir); err != nil {
+			fmt.Fprintf(os.Stderr, "ai-manifest failed: %v\n", err)
+			os.Exit(1)
+		}
 	default:
 		flag.Usage()
 		os.Exit(1)
 	}
+}
+
+// scriptLevelSummary is one entry of mad2raw/scripts/INDEX.json, one per
+// level archive processed by runExtractScripts.
+type scriptLevelSummary struct {
+	Level             string   `json:"level"`
+	ScriptInfoCount   int      `json:"script_info_count"`
+	ScriptSetCount    int      `json:"script_set_count"`
+	ReferencedAiPaths []string `json:"referenced_ai_paths,omitempty"`
+	Error             string   `json:"error,omitempty"`
+}
+
+// runExtractScripts runs `mad2repack script-dump` against every level.bld
+// found inside a *.bld archive under mad2/Content/Streams/win/, writing one
+// JSON dump per level to mad2raw/scripts/<Level>.json plus a summary
+// INDEX.json. This is the ".ai extraction" answer described in
+// docs/SCRIPT_FORMAT.md: Mad2 never ships real .ai files (confirmed, zero
+// hits scanning the whole corpus) -- only the compiled ScriptInfo/ScriptSet
+// object graph that .ai source would have compiled into, plus path-string
+// references to the .ai files that produced it. So "extracting the .ai
+// files" means dumping that compiled graph (mad2repack script-dump already
+// does this per-level) across every level, alongside the manifest of
+// original .ai paths each level's string pool still references
+// (script-dump's own "referenced_ai_paths" field) -- not reconstructing the
+// original .ai binary itself, which is a separate, much larger effort (see
+// SCRIPT_FORMAT.md's "two distinct formats" section) left for later.
+func runExtractScripts() error {
+	srcDir := "mad2/Content/Streams/win"
+	outDir := "mad2raw/scripts"
+
+	fmt.Println("=== Starting Script Extraction ===")
+	if err := os.MkdirAll(outDir, 0755); err != nil {
+		return err
+	}
+
+	entries, err := os.ReadDir(srcDir)
+	if err != nil {
+		return fmt.Errorf("read game streams: %w", err)
+	}
+
+	var summaries []scriptLevelSummary
+	for _, e := range entries {
+		if e.IsDir() || strings.ToLower(filepath.Ext(e.Name())) != ".bld" {
+			continue
+		}
+		levelName := strings.TrimSuffix(e.Name(), filepath.Ext(e.Name()))
+		archivePath := filepath.Join(srcDir, e.Name())
+		fmt.Printf("=== %s ===\n", levelName)
+
+		summary, err := extractLevelScripts(archivePath, levelName, outDir)
+		if err != nil {
+			fmt.Printf("  %v\n", err)
+			summary = scriptLevelSummary{Level: levelName, Error: err.Error()}
+		}
+		summaries = append(summaries, summary)
+	}
+
+	indexPath := filepath.Join(outDir, "INDEX.json")
+	f, err := os.Create(indexPath)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	enc := json.NewEncoder(f)
+	enc.SetIndent("", "  ")
+	if err := enc.Encode(summaries); err != nil {
+		return fmt.Errorf("write index: %w", err)
+	}
+	fmt.Printf("\nWrote %d level summaries to %s\n", len(summaries), indexPath)
+
+	if err := writeAiReferenceManifest(summaries, outDir); err != nil {
+		return fmt.Errorf("write ai reference manifest: %w", err)
+	}
+	return nil
+}
+
+// runAiManifest regenerates just the lightweight ai_references.txt manifest
+// (see writeAiReferenceManifest) from an already-produced INDEX.json,
+// without re-running the full (multi-GB, unpack-per-level) extraction --
+// useful both to backfill the manifest for a run that predates this output,
+// and as the cheap thing to hand someone who just wants to string-hunt
+// referenced .ai paths without downloading every level's full opcode dump.
+func runAiManifest(scriptsDir string) error {
+	if scriptsDir == "" {
+		scriptsDir = "mad2raw/scripts"
+	}
+	indexPath := filepath.Join(scriptsDir, "INDEX.json")
+	data, err := os.ReadFile(indexPath)
+	if err != nil {
+		return fmt.Errorf("read %s (run extract-scripts first): %w", indexPath, err)
+	}
+	var summaries []scriptLevelSummary
+	if err := json.Unmarshal(data, &summaries); err != nil {
+		return fmt.Errorf("parse %s: %w", indexPath, err)
+	}
+	return writeAiReferenceManifest(summaries, scriptsDir)
+}
+
+// writeAiReferenceManifest writes a small, plain-text, easy-to-zip-and-share
+// companion to the (large, one-per-level) script-dump JSONs: just the
+// referenced .ai source paths each level's string pool still carries,
+// grouped by level, with no opcode/object-graph content at all. This is the
+// artifact for someone who wants to grep/eyeball authoring-time script
+// filenames (e.g. hunting for a specific feature or level-behavior name)
+// without downloading the full multi-GB set of per-level dumps.
+func writeAiReferenceManifest(summaries []scriptLevelSummary, outDir string) error {
+	uniquePaths := make(map[string]bool)
+	totalRefs := 0
+	for _, s := range summaries {
+		for _, p := range s.ReferencedAiPaths {
+			uniquePaths[p] = true
+			totalRefs++
+		}
+	}
+
+	manifestPath := filepath.Join(outDir, "ai_references.txt")
+	f, err := os.Create(manifestPath)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	fmt.Fprintf(f, "# Madagascar 2 -- referenced .ai TFBScript source paths\n")
+	fmt.Fprintf(f, "#\n")
+	fmt.Fprintf(f, "# Mad2 does not ship real .ai files (confirmed: zero hits scanning the whole\n")
+	fmt.Fprintf(f, "# extracted asset corpus for *.ai). These are authoring-time source-file path\n")
+	fmt.Fprintf(f, "# references left behind as plain strings in each level's compiled string\n")
+	fmt.Fprintf(f, "# pool -- see docs/SCRIPT_FORMAT.md. One path per line, grouped by the level\n")
+	fmt.Fprintf(f, "# archive whose string pool referenced it (a path may recur under several\n")
+	fmt.Fprintf(f, "# levels, since Includes/ scripts are shared).\n")
+	fmt.Fprintf(f, "#\n")
+	fmt.Fprintf(f, "# %d levels, %d total references, %d unique paths.\n", len(summaries), totalRefs, len(uniquePaths))
+	fmt.Fprintf(f, "#\n")
+	fmt.Fprintf(f, "# The full compiled ScriptInfo/ScriptSet object graph for each level (what\n")
+	fmt.Fprintf(f, "# these paths originally compiled into -- there is no known way to bind a\n")
+	fmt.Fprintf(f, "# given path 1:1 to one specific ScriptInfo/ScriptSet root yet, see\n")
+	fmt.Fprintf(f, "# docs/CLASS_SCHEMA.md's \"Naming investigation\") is in the much larger\n")
+	fmt.Fprintf(f, "# sibling <Level>.json files in this same directory.\n\n")
+
+	levels := make([]scriptLevelSummary, len(summaries))
+	copy(levels, summaries)
+	sort.Slice(levels, func(i, j int) bool { return levels[i].Level < levels[j].Level })
+
+	for _, s := range levels {
+		if s.Error != "" {
+			fmt.Fprintf(f, "## %s (error: %s)\n\n", s.Level, s.Error)
+			continue
+		}
+		fmt.Fprintf(f, "## %s (%d referenced paths)\n", s.Level, len(s.ReferencedAiPaths))
+		for _, p := range s.ReferencedAiPaths {
+			fmt.Fprintln(f, p)
+		}
+		fmt.Fprintln(f)
+	}
+
+	fmt.Printf("Wrote %d unique paths (%d total references) across %d levels to %s\n",
+		len(uniquePaths), totalRefs, len(levels), manifestPath)
+	return nil
+}
+
+// extractLevelScripts unpacks a single level archive to a scratch directory
+// just long enough to run script-dump against its level.bld, then cleans up
+// -- the archive's other extracted assets (textures, sounds, etc.) aren't
+// needed here and aren't kept.
+func extractLevelScripts(archivePath, levelName, outDir string) (scriptLevelSummary, error) {
+	tmpDir, err := os.MkdirTemp("", "mad2script_*")
+	if err != nil {
+		return scriptLevelSummary{}, fmt.Errorf("mkdtemp: %w", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	cmd := exec.Command("./mad2repack", "unpack", archivePath, "-o", tmpDir)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return scriptLevelSummary{}, fmt.Errorf("unpack failed: %w\n%s", err, out)
+	}
+
+	levelBld := filepath.Join(tmpDir, "level.bld")
+	if _, err := os.Stat(levelBld); err != nil {
+		return scriptLevelSummary{}, fmt.Errorf("no level.bld inside archive, skipping")
+	}
+
+	outJSON := filepath.Join(outDir, levelName+".json")
+	cmd = exec.Command("./mad2repack", "script-dump", levelBld, outJSON)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return scriptLevelSummary{}, fmt.Errorf("script-dump failed: %w\n%s", err, out)
+	}
+	fmt.Printf("  %s", out)
+
+	outPretty := filepath.Join(outDir, levelName+".pretty.txt")
+	cmd = exec.Command("./mad2repack", "script-pretty", levelBld, outPretty)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		// Non-fatal: the raw JSON dump above is already written, so a
+		// pretty-render failure shouldn't lose that. script-pretty is a
+		// newer, less battle-tested renderer than script-dump.
+		fmt.Printf("  script-pretty failed (JSON dump still kept): %v\n%s", err, out)
+	}
+
+	data, err := os.ReadFile(outJSON)
+	if err != nil {
+		return scriptLevelSummary{}, fmt.Errorf("read back %s: %w", outJSON, err)
+	}
+	var parsed struct {
+		ScriptInfoCount   int      `json:"script_info_count"`
+		ScriptSetCount    int      `json:"script_set_count"`
+		ReferencedAiPaths []string `json:"referenced_ai_paths"`
+	}
+	if err := json.Unmarshal(data, &parsed); err != nil {
+		return scriptLevelSummary{}, fmt.Errorf("parse %s: %w", outJSON, err)
+	}
+	return scriptLevelSummary{
+		Level:             levelName,
+		ScriptInfoCount:   parsed.ScriptInfoCount,
+		ScriptSetCount:    parsed.ScriptSetCount,
+		ReferencedAiPaths: parsed.ReferencedAiPaths,
+	}, nil
 }
 
 // runExtract extracts all game archives to mad2raw/

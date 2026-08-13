@@ -43,9 +43,11 @@ static void Log(const char* fmt, ...) {
 }
 
 // ---------------------------------------------------------------------
-// Config (mad2config.dll's [ChaosMode] section), read once at startup --
-// matches this codebase's existing "config read once, not hot-reloaded"
-// convention (e.g. mad2twitchchat's Channel).
+// Config (mad2config.dll's [ChaosMode] section), seeded once at startup.
+// g_Config.enabled is also a LIVE flag now (see DirectorThreadFunc below
+// and RegisterSettings) -- mad2debugmenu.dll's Chaos Mode checkbox points
+// straight at it, so the director loop has to keep checking it every
+// cycle instead of exiting once at startup the way it used to.
 // ---------------------------------------------------------------------
 
 struct Config {
@@ -117,6 +119,22 @@ static std::vector<int> BuildWeightedPool(const Mad2EffectsApi& effects, int cou
     return pool;
 }
 
+// Chaos Mode's settings are edited via the debug menu's generic "Raw
+// Config" tab now (mad2settings.dll registration removed -- redundant
+// once Raw Config could show/edit every config.cfg key). Raw Config only
+// ever writes straight to config.cfg -- it can't reach into this mod's
+// own live g_Config -- so this mod has to notice those edits itself:
+// ReloadConfigLive re-reads Enabled/MinIntervalSeconds/MaxIntervalSeconds
+// every loop iteration (cheap: at most every 250ms while idle, and at
+// least once per trigger interval while active -- see DirectorThreadFunc).
+static void ReloadConfigLive() {
+    const auto& api = Mad2Config_Resolve();
+    if (!api.GetBool) return;
+    g_Config.enabled = api.GetBool("ChaosMode", "Enabled", g_Config.enabled ? TRUE : FALSE, "") != FALSE;
+    g_Config.minIntervalSeconds = api.GetInt("ChaosMode", "MinIntervalSeconds", g_Config.minIntervalSeconds, "");
+    g_Config.maxIntervalSeconds = api.GetInt("ChaosMode", "MaxIntervalSeconds", g_Config.maxIntervalSeconds, "");
+}
+
 static DWORD WINAPI DirectorThreadFunc(LPVOID) {
     const int kRetryDelayMs = 200;
     const int kWarnAfterAttempts = 25;  // ~5s
@@ -138,16 +156,31 @@ static DWORD WINAPI DirectorThreadFunc(LPVOID) {
     }
 
     LoadConfig();
-    if (!g_Config.enabled) {
-        Log("Chaos mode disabled (ChaosMode.Enabled=false); director thread exiting.\n");
-        return 0;
-    }
 
     const auto& effects = Mad2Effects_Resolve();
+    bool loggedDisabled = false;
 
     for (;;) {
+        ReloadConfigLive();
+
+        // Enabled is a LIVE flag, re-read from config.cfg every iteration
+        // above -- this thread never exits when it's off, it just idles in
+        // short sleeps so a later re-enable (via Raw Config) is picked up
+        // without needing a restart.
+        if (!g_Config.enabled) {
+            if (!loggedDisabled) {
+                Log("Chaos mode disabled (ChaosMode.Enabled=false); idling until re-enabled.\n");
+                loggedDisabled = true;
+            }
+            Sleep(250);
+            continue;
+        }
+        loggedDisabled = false;
+
         int intervalMs = ComputeIntervalMs();
         Sleep(intervalMs);
+        ReloadConfigLive();
+        if (!g_Config.enabled) continue;  // got disabled mid-sleep -- skip this cycle's trigger
 
         int count = effects.GetCount();
         if (count <= 0) {

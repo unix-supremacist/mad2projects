@@ -56,8 +56,11 @@ func (a *AppState) RefreshInstalls() {
 
 // LoadConfigForSelected re-parses the selected install's config.cfg -- the
 // registry that mad2config.dll owns and every other mod reads its settings
-// from (see CLAUDE.md's "Shared-API mods" section). Every section header
-// in that file becomes a category in the launcher's dropdown.
+// from (see CLAUDE.md's "Shared-API mods" section). Kept around for
+// ui_music.go's own dedicated [Music] page (via state.Cfg); the launcher no
+// longer surfaces every OTHER section as its own generic browsable category
+// here -- that's the in-game debug menu's "Config" tab's job now (see
+// mad2debugmenu/src/debugmenu.cpp).
 func (a *AppState) LoadConfigForSelected() {
 	a.Cfg = nil
 	inst := a.SelectedInstall()
@@ -71,19 +74,7 @@ func (a *AppState) LoadConfigForSelected() {
 }
 
 func (a *AppState) CategoryNames() []string {
-	names := []string{"Game Launch", "Cheats", "Mad2 Randomizer", "Music", "Build Games", "Mod Installer"}
-	if a.Cfg != nil {
-		// "Music" is a hardcoded category above (it owns seeding config.cfg's
-		// own [Music] section -- see ui_music.go), so skip it here to avoid
-		// listing it twice once that section actually exists on disk.
-		for _, s := range a.Cfg.Sections {
-			if s == "Music" {
-				continue
-			}
-			names = append(names, s)
-		}
-	}
-	return names
+	return []string{"Game Launch", "Cheats", "Mad2 Randomizer", "Music", "Build Games", "Mod Installer"}
 }
 
 func (a *AppState) ShowCategory(name string) {
@@ -102,7 +93,7 @@ func (a *AppState) ShowCategory(name string) {
 	case "Mod Installer":
 		page = buildModInstallerPage(a)
 	default:
-		page = buildConfigCategoryPage(a, name)
+		page = buildGameLaunchPage(a)
 	}
 	a.Content.Objects = []fyne.CanvasObject{page}
 	a.Content.Refresh()

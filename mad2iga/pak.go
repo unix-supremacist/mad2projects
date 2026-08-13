@@ -77,7 +77,7 @@ func isPrintableASCII(b byte) bool {
 	return (b >= 32 && b <= 126) || b == 9 || b == 10 || b == 13
 }
 
-func scanExternalStrings(data []byte, poolStart, poolEnd, sec2Start uint32) ([]string, []string, []PakStringRef) {
+func scanExternalStrings(data []byte, poolStart, poolEnd, sec1Start uint32) ([]string, []string, []PakStringRef) {
 	var audioStrings []string
 	var nonLangStrings []string
 	var layout []PakStringRef
@@ -246,33 +246,44 @@ func DumpPak(pakPath string, w io.Writer) error {
 		return fmt.Errorf("invalid magic: 0x%08X (expected IGZ\\x01)", magic)
 	}
 
-	// We dynamically scan Section 2 for the bounds of the localized string pool.
-	// Section 2 start offset is stored at 0x20 in the header.
+	// We dynamically scan Section 1 for the bounds of the localized string pool.
+	// Section 1's offset/size are the second 16-byte section descriptor
+	// (offset,size,align,flags), at absolute file offset 0x20/0x24 -- see
+	// docs/IGZ_FORMAT.md's "RESOLVED" note on the old Section-0-vs-.pak-header
+	// discrepancy: these two fields are NOT "Section 2" (a misreading from
+	// mad2assetextractor/docs/PAK_FORMAT.md's older, incorrect 8-byte-stride
+	// header model) -- .pak files use the identical 16-byte section-descriptor
+	// model level.bld does, confirmed byte-for-byte this session across 7 real
+	// .pak files. This code was already reading the *correct* bytes (0x20/0x24
+	// really is Section 1's own offset/size under that model, and Section 1 is
+	// always the second descriptor regardless of how many total sections a
+	// given .pak has), just under the wrong name -- renamed sec2* -> sec1* for
+	// clarity, no behavior change.
 	if len(data) < 0x24 {
 		return fmt.Errorf("file header too small")
 	}
-	sec2Start := binary.LittleEndian.Uint32(data[0x20:0x24])
-	sec2Size := binary.LittleEndian.Uint32(data[0x24:0x28])
-	sec2End := sec2Start + sec2Size
+	sec1Start := binary.LittleEndian.Uint32(data[0x20:0x24])
+	sec1Size := binary.LittleEndian.Uint32(data[0x24:0x28])
+	sec1End := sec1Start + sec1Size
 
-	if sec2End > uint32(len(data)) {
-		sec2End = uint32(len(data))
+	if sec1End > uint32(len(data)) {
+		sec1End = uint32(len(data))
 	}
 
-	// Scan for the contiguous UTF-16LE string pool inside Section 2
+	// Scan for the contiguous UTF-16LE string pool inside Section 1
 	var poolStart, poolEnd uint32
-	pos := sec2Start
+	pos := sec1Start
 	foundStart := false
 
-	for pos < sec2End {
-		if foundStart && pos+4 <= sec2End {
+	for pos < sec1End {
+		if foundStart && pos+4 <= sec1End {
 			// Check if we hit a double-null terminator ending the string pool list
 			if data[pos] == 0 && data[pos+1] == 0 && data[pos+2] == 0 && data[pos+3] == 0 {
 				break
 			}
 		}
 
-		if pos+4 <= sec2End {
+		if pos+4 <= sec1End {
 			// Read two consecutive UTF-16 characters
 			ch1 := binary.LittleEndian.Uint16(data[pos : pos+2])
 			ch2 := binary.LittleEndian.Uint16(data[pos+2 : pos+4])
@@ -280,7 +291,7 @@ func DumpPak(pakPath string, w io.Writer) error {
 			if isPrintableUTF16(ch1) && isPrintableUTF16(ch2) {
 				// Measure the length of this string
 				end := pos
-				for end < sec2End-1 && !(data[end] == 0 && data[end+1] == 0) {
+				for end < sec1End-1 && !(data[end] == 0 && data[end+1] == 0) {
 					end += 2
 				}
 				strLen := (end - pos) / 2
@@ -386,7 +397,7 @@ func DumpPak(pakPath string, w io.Writer) error {
 	// Scan for external strings (audio & non-language strings outside the pool)
 	audioStartIdx := len(audioStrings)
 	nonLangStartIdx := len(nonLangStrings)
-	extAudio, extNonLang, extLayout := scanExternalStrings(data, poolStart, poolEnd, sec2Start)
+	extAudio, extNonLang, extLayout := scanExternalStrings(data, poolStart, poolEnd, sec1Start)
 
 	for i := range extLayout {
 		if extLayout[i].Type == "audio" {
@@ -575,6 +586,48 @@ func CompilePak(r io.Reader, w io.Writer) error {
 
 	newSize := uint32(stringPool.Len())
 	shift := int32(newSize) - int32(oldSize)
+
+	// Bug 5: Section 0's own chunk table (igIGZLoader::fixupChunk's
+	// reference-fixup mechanism -- see docs/IGA_FORMAT.md's "A newly-found,
+	// much larger candidate" section for the full discovery, confirmed via
+	// a live debugger session catching a real SIGSEGV inside it) embeds
+	// segmented-pointer patch locations into Section 1 that go stale under
+	// exactly the same pool-resize edit bugs 1-4 already patch for -- but
+	// bugs 1-4 only ever touch known object-graph *fields*; this table's
+	// entries are a structurally separate mechanism bugs 1-4 never
+	// examined.
+	//
+	// Computed here (using the *original*, unmodified headerBytes/meta --
+	// every value this produces is Section-1-*relative*, per the
+	// segID:offset convention, so it's entirely independent of anything
+	// bugs 1-4 do below and of Section 0's own absolute position) but
+	// *applied* as a final splice on `outBytes` at the very end of this
+	// function, after every other fix has already run against the
+	// original, not-yet-resized Section 0 layout. This avoids a real
+	// coordinate-system trap: bugs 1-4's whole-file pointer scan compares
+	// *stored* pointer values (which remain in original-file coordinates
+	// no matter what) against `meta.StringPoolEnd` -- if this fix instead
+	// pre-resized `headerBytes`/`meta` before that scan ran, the scan
+	// would need every stored value's comparison AND `meta.StringPoolEnd`
+	// itself to be adjusted consistently, which they structurally can't be
+	// with a single scalar `shift` once Section 0 also changes size.
+	// Applying this fix as an isolated final splice sidesteps the problem
+	// entirely: nothing else in the file holds an absolute pointer *into*
+	// Section 0 that would need correcting when it resizes, only the
+	// section descriptor table's own offset/size fields do.
+	var newSec0 []byte
+	var sizeDelta0 int
+	sec0Off, sec1OffOrig := uint32(0), uint32(0)
+	if graph0, g0err := ParseObjectGraph(headerBytes); g0err == nil {
+		sec0Off = graph0.Sections[0].Offset
+		sec1OffOrig = graph0.Sec1Off
+		oldPoolEndRel := meta.StringPoolEnd - sec1OffOrig
+		var cerr error
+		newSec0, sizeDelta0, cerr = fixChunkTableSection1Refs(headerBytes, sec0Off, sec1OffOrig, shift, oldPoolEndRel)
+		if cerr != nil {
+			return fmt.Errorf("fix chunk table: %w", cerr)
+		}
+	}
 
 	// Specifically update Section 2 size in the header.
 	// In the header, Section 2 size is at offset 0x24.
@@ -890,6 +943,31 @@ func CompilePak(r io.Reader, w io.Writer) error {
 				}
 			}
 		}
+	}
+
+	// Apply the chunk-table fix computed earlier (bug 5), as an isolated
+	// final splice -- see that computation's own comment for why this has
+	// to happen last, against the already-fully-corrected `outBytes`,
+	// rather than by pre-resizing `headerBytes`. At this point `outBytes`
+	// still has Section 0 at its original size/position (nothing above
+	// touches Section 0's own bytes), so `outBytes[sec0Off:sec1OffOrig]`
+	// is exactly the original Section 0 span to replace.
+	if newSec0 != nil {
+		if int(sec1OffOrig) > len(outBytes) {
+			return fmt.Errorf("chunk table fix: Section 1 offset %d past end of output (%d bytes)", sec1OffOrig, len(outBytes))
+		}
+		rebuilt := make([]byte, 0, len(outBytes)+sizeDelta0)
+		rebuilt = append(rebuilt, outBytes[:sec0Off]...)
+		rebuilt = append(rebuilt, newSec0...)
+		rebuilt = append(rebuilt, outBytes[sec1OffOrig:]...)
+		// Section descriptor table: Section 0's size (absolute offset
+		// 0x14) and Section 1's offset (absolute offset 0x20) both need
+		// to reflect Section 0 changing size. Section 1's own size
+		// (0x24) is unaffected -- already correctly set by the shift
+		// logic above, independent of Section 0's resize.
+		binary.LittleEndian.PutUint32(rebuilt[0x14:], binary.LittleEndian.Uint32(rebuilt[0x14:0x18])+uint32(int32(sizeDelta0)))
+		binary.LittleEndian.PutUint32(rebuilt[0x20:], binary.LittleEndian.Uint32(rebuilt[0x20:0x24])+uint32(int32(sizeDelta0)))
+		outBytes = rebuilt
 	}
 
 	if _, err := w.Write(outBytes); err != nil {

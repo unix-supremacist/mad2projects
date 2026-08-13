@@ -75,14 +75,41 @@ typedef int(WINAPI* Mad2HookUtil_PatchIatAllModules_t)(const char* importDll, co
 // by every D3D9-hooking overlay mod.
 typedef void(WINAPI* Mad2HookUtil_PatchVTableSlot_t)(void* comObj, int index, void* hookFunc, void** prevFunc);
 
+// Installs a 5-byte relative-JMP inline detour at `targetAddr` (an arbitrary
+// internal function, not something in a vtable or import table -- e.g.
+// mad2xdeltamod's igCore.dll!igIGZLoader::parseSections hook, found by
+// reverse-engineering rather than resolved by name). Unlike PatchIat/
+// PatchVTableSlot, this overwrites *code*, not a function pointer slot, so
+// the caller must supply `stolenBytes` -- the number of whole instructions
+// (verified by disassembly ahead of time, at least 5) at the start of
+// targetAddr that are safe to relocate into a trampoline. This is
+// necessarily target-specific and NOT auto-detected (no length-disassembler
+// here) -- get it wrong and you corrupt the target function.
+//
+// On success, `*outTrampoline` points at a freshly VirtualAlloc'd
+// PAGE_EXECUTE_READWRITE buffer containing: the `stolenBytes` original
+// bytes verbatim, followed by a JMP back to targetAddr+stolenBytes. Call
+// through *outTrampoline (cast to the target's real signature) to run the
+// original function's stolen prologue and resume it normally -- this is
+// what lets hookFunc run some logic and then "call the original."
+// targetAddr itself is left with a JMP to hookFunc, followed by NOP padding
+// out to stolenBytes so no partial instruction is left dangling.
+//
+// Returns TRUE on success. Only ever call this once per targetAddr -- it
+// does not chain like PatchIat/PatchVTableSlot do.
+typedef BOOL(WINAPI* Mad2HookUtil_InstallInlineHook_t)(void* targetAddr, void* hookFunc, int stolenBytes,
+                                                         void** outTrampoline);
+
 #define MAD2HOOKUTIL_PATCHIAT_PROC "Mad2HookUtil_PatchIat"
 #define MAD2HOOKUTIL_PATCHIATALLMODULES_PROC "Mad2HookUtil_PatchIatAllModules"
 #define MAD2HOOKUTIL_PATCHVTABLESLOT_PROC "Mad2HookUtil_PatchVTableSlot"
+#define MAD2HOOKUTIL_INSTALLINLINEHOOK_PROC "Mad2HookUtil_InstallInlineHook"
 
 struct Mad2HookUtilApi {
     Mad2HookUtil_PatchIat_t PatchIat;
     Mad2HookUtil_PatchIatAllModules_t PatchIatAllModules;
     Mad2HookUtil_PatchVTableSlot_t PatchVTableSlot;
+    Mad2HookUtil_InstallInlineHook_t InstallInlineHook;
 };
 
 // Resolves aa_mad2hookutil.dll's exports by name. Cheap to call every time
@@ -101,6 +128,8 @@ inline const Mad2HookUtilApi& Mad2HookUtil_Resolve() {
                 reinterpret_cast<void*>(GetProcAddress(h, MAD2HOOKUTIL_PATCHIATALLMODULES_PROC)));
             api.PatchVTableSlot = reinterpret_cast<Mad2HookUtil_PatchVTableSlot_t>(
                 reinterpret_cast<void*>(GetProcAddress(h, MAD2HOOKUTIL_PATCHVTABLESLOT_PROC)));
+            api.InstallInlineHook = reinterpret_cast<Mad2HookUtil_InstallInlineHook_t>(
+                reinterpret_cast<void*>(GetProcAddress(h, MAD2HOOKUTIL_INSTALLINLINEHOOK_PROC)));
             resolved = api.PatchIat != nullptr;
         }
     }
@@ -149,4 +178,10 @@ inline int Mad2HookUtil_PatchIatAllModulesOrdinal(const char* importDll, const c
 inline void Mad2HookUtil_PatchVTableSlot(void* comObj, int index, void* hookFunc, void** prevFunc = nullptr) {
     const auto& api = Mad2HookUtil_Resolve();
     if (api.PatchVTableSlot) api.PatchVTableSlot(comObj, index, hookFunc, prevFunc);
+}
+
+inline bool Mad2HookUtil_InstallInlineHook(void* targetAddr, void* hookFunc, int stolenBytes, void** outTrampoline) {
+    const auto& api = Mad2HookUtil_Resolve();
+    if (!api.InstallInlineHook) return false;
+    return api.InstallInlineHook(targetAddr, hookFunc, stolenBytes, outTrampoline) != FALSE;
 }

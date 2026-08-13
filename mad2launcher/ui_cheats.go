@@ -1,7 +1,9 @@
 package main
 
 import (
+	"fmt"
 	"path/filepath"
+	"strconv"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
@@ -31,6 +33,35 @@ func cheatOptionToValue(opt string) uint32 {
 	default:
 		return 0
 	}
+}
+
+// numericFieldRow builds a labeled integer entry that reads the current
+// value via read() and writes back via write() on every keystroke (not
+// just Enter/submit -- a plain fyne Entry doesn't fire OnSubmitted on
+// focus loss either, so requiring Enter made every edit here need an
+// extra keypress) -- used for the coin-economy fields, which are plain
+// uint32 values, not cheat-style enums or booleans. Parse errors from
+// transient/incomplete input (e.g. the field momentarily empty while
+// backspacing to type a new number) are swallowed rather than surfaced --
+// only a genuine write failure pops the error dialog.
+func numericFieldRow(state *AppState, label string, read func() (uint32, error), write func(uint32) error) fyne.CanvasObject {
+	value, err := read()
+	if err != nil {
+		return widget.NewLabel("Error reading " + label + ": " + err.Error())
+	}
+	entry := widget.NewEntry()
+	entry.SetText(strconv.FormatUint(uint64(value), 10))
+	entry.OnChanged = func(text string) {
+		v, err := strconv.ParseUint(text, 10, 32)
+		if err != nil {
+			return
+		}
+		if err := write(uint32(v)); err != nil {
+			dialog.ShowError(err, state.Window)
+		}
+	}
+	nameLabel := widget.NewLabelWithStyle(label, fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
+	return container.NewBorder(nil, nil, nameLabel, nil, entry)
 }
 
 // buildCheatsPage is the "Cheats" category: edit the cheat toggles baked
@@ -68,6 +99,58 @@ func buildCheatsPage(state *AppState) fyne.CanvasObject {
 			body.Refresh()
 			return
 		}
+
+		// Story-progress ability flags -- separate from cheatsList's
+		// dedicated per-cheat uint32 slots (see saveeditor.go's own
+		// comment on ReadClimbAbility/ReadMonkeyCollectible for why).
+		climbUnlocked, err := ReadClimbAbility(savePath)
+		if err != nil {
+			body.Add(widget.NewLabel("Error reading climb ability: " + err.Error()))
+		} else {
+			climbCheck := widget.NewCheck("Climb Ability (unlocked by completing Rites of Passage)", func(checked bool) {
+				if err := WriteClimbAbility(savePath, checked); err != nil {
+					dialog.ShowError(err, state.Window)
+				}
+			})
+			climbCheck.SetChecked(climbUnlocked)
+			body.Add(climbCheck)
+		}
+
+		monkeysUnlocked, err := ReadMonkeyCollectible(savePath)
+		if err != nil {
+			body.Add(widget.NewLabel("Error reading monkey collectibles: " + err.Error()))
+		} else {
+			monkeysCheck := widget.NewCheck("Monkey Collectibles (unlocked by leaving Fix the Plane)", func(checked bool) {
+				if err := WriteMonkeyCollectible(savePath, checked); err != nil {
+					dialog.ShowError(err, state.Window)
+				}
+			})
+			monkeysCheck.SetChecked(monkeysUnlocked)
+			body.Add(monkeysCheck)
+		}
+
+		// Coin economy -- see saveeditor.go's own comment on
+		// ReadAmountSpent/levelCoinOffsets for how these two combine
+		// (shop total = sum of every level's own coin count - amount
+		// spent) and why there's no single "current balance" field. One
+		// row per LevelCoinLevels entry (includes "Unknown0x19C", a real,
+		// summed-into-the-total slot that's never been observed to
+		// belong to any specific named level -- see saveeditor.go).
+		body.Add(numericFieldRow(state, "Amount Spent (shops, persists across all levels)",
+			func() (uint32, error) { return ReadAmountSpent(savePath) },
+			func(v uint32) error { return WriteAmountSpent(savePath, v) }))
+		for _, lvl := range LevelCoinLevels {
+			lvl := lvl
+			label := lvl + " Coins"
+			if max, ok := LevelCoinMax[lvl]; ok {
+				label = fmt.Sprintf("%s Coins (max %d)", lvl, max)
+			}
+			body.Add(numericFieldRow(state, label,
+				func() (uint32, error) { return ReadLevelCoins(savePath, lvl) },
+				func(v uint32) error { return WriteLevelCoins(savePath, lvl, v) }))
+		}
+
+		body.Add(widget.NewSeparator())
 
 		for _, c := range cheatsList {
 			c := c

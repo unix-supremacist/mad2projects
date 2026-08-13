@@ -6,6 +6,7 @@ import (
 	"math"
 	"os"
 	"sort"
+	"strings"
 
 	"mad2iga"
 )
@@ -28,6 +29,15 @@ var tfbScriptContainerClasses = map[string]bool{
 	"ScriptGroupStack":       true,
 	"ScriptObjectSortedList": true,
 	"ScriptVariantList":      true,
+}
+
+// nameOrdinalFields are the fields whose small-integer value is an ordinal into
+// the Section-0 string pool (resolvable via ObjectGraph.ResolveStringOrdinal).
+// For each, script-dump additionally emits "<field>__name" with the resolved
+// string. See docs/SCRIPT_FORMAT.md "Name-pool resolution".
+var nameOrdinalFields = map[string]bool{
+	"_name":    true, // igNamedObject name (StringInfo/Op*/ValueInfo/ScriptSet/...)
+	"_varName": true, // OpCreateVariable / OpFindVariable variable name
 }
 
 // cmdScriptDump recursively renders a level.bld's TFBScriptInfo object graph
@@ -70,10 +80,11 @@ func cmdScriptDump(bldPath, jsonPath string) error {
 	sort.Slice(scriptSets, func(i, j int) bool { return scriptSets[i].Addr < scriptSets[j].Addr })
 
 	out := map[string]interface{}{
-		"script_info_count": len(scriptInfos),
-		"script_set_count":  len(scriptSets),
-		"script_infos":      scriptInfos,
-		"script_sets":       scriptSets,
+		"script_info_count":   len(scriptInfos),
+		"script_set_count":    len(scriptSets),
+		"referenced_ai_paths": referencedAiPaths(graph),
+		"script_infos":        scriptInfos,
+		"script_sets":         scriptSets,
 	}
 
 	f, err := os.Create(jsonPath)
@@ -89,6 +100,35 @@ func cmdScriptDump(bldPath, jsonPath string) error {
 
 	fmt.Printf("  %d ScriptInfo, %d ScriptSet top-level roots dumped\n", len(scriptInfos), len(scriptSets))
 	return nil
+}
+
+// referencedAiPaths scans the level's Section-0 string pool (the same pool
+// StringPool()/ResolveStringOrdinal() serve for OpCreateVariable.varName
+// resolution) for entries that look like authoring-time ".ai" TFBScript
+// source paths (e.g. "C:/TFB/Content/Levels/Includes/Player_GenericStuff/
+// scripts/ActivateHealthPowerup.ai"). Per docs/SCRIPT_FORMAT.md, no real
+// .ai file is ever shipped -- these are source-file references left behind
+// by whoever authored the level, pointing at the compiled ScriptInfo/
+// ScriptSet graph dumped alongside them in this same file. There is no
+// solved mechanism (yet) to bind a given path 1:1 to one specific
+// ScriptInfo/ScriptSet root -- see CLASS_SCHEMA.md's "Naming investigation"
+// -- so this is deliberately just the flat, deduplicated manifest of what
+// existed, not a resolved mapping.
+func referencedAiPaths(g *iga.ObjectGraph) []string {
+	seen := make(map[string]bool)
+	var paths []string
+	for _, s := range g.StringPool() {
+		if len(s) < 4 || !strings.EqualFold(s[len(s)-3:], ".ai") {
+			continue
+		}
+		if seen[s] {
+			continue
+		}
+		seen[s] = true
+		paths = append(paths, s)
+	}
+	sort.Strings(paths)
+	return paths
 }
 
 // maxRenderDepth bounds recursion through nested pointer chains (e.g. a
@@ -191,6 +231,19 @@ func renderObject(g *iga.ObjectGraph, obj iga.ObjectRef, visiting map[uint32]boo
 			continue
 		}
 		fields[name] = v
+		// Resolve name fields to real strings via the authoritative RSTR/TSTR
+		// fixup tables (see mad2iga ObjectGraph.ResolveFieldName and
+		// docs/SCRIPT_FORMAT.md "Name-pool resolution"). RSTR-gated, so it only
+		// fires for genuine name indices: igNamedObject `_name` on StringInfo/
+		// Op* nodes, OpCreateVariable/OpFindVariable `_varName` (e.g. "cam
+		// flyaround mode", "Options_Opt_DEBUG"), etc. A field RSTR does not
+		// flag as a name (or that resolves to an unrelated string) simply
+		// yields no "<field>__name" entry rather than a bogus one.
+		if nameOrdinalFields[name] {
+			if s, ok := g.ResolveFieldName(obj, name); ok {
+				fields[name+"__name"] = s
+			}
+		}
 	}
 	if obj.ClassName == "RHSValueStack" {
 		decodeRHSValueStack(g, obj, fields)

@@ -27,9 +27,20 @@ type ObjectGraph struct {
 	Sec0Off    uint32
 	Sec1Off    uint32
 
-	// stringPool caches StringPool()'s result — built lazily since most
-	// callers (objects-dump, etc.) never need it.
-	stringPool []string
+	// Authoritative Section-0 fixup-table data, built lazily on first need
+	// (buildStringTables) from Section 0's own chunk table — see
+	// ../docs/IGZ_FORMAT.md's fixup-table row identities:
+	//   - nameTable: the TSTR string table (chunk type 1), indexed directly
+	//     by the value stored at any RSTR-flagged location.
+	//   - stringLocs: the RSTR set (chunk type 4) — absolute file offsets of
+	//     the field words that hold a TSTR index (rather than a pointer/raw
+	//     value). Authoritative: if a field's address is in here, its word is
+	//     a name index, full stop. This is what makes per-instance naming
+	//     (ActorInfo._name -> "Tourist01", OpCreateVariable._varName -> "menu
+	//     items") resolve reliably, replacing the old heuristic string pool.
+	tablesBuilt bool
+	nameTable   []string
+	stringLocs  map[uint32]bool
 }
 
 // ObjectRef identifies one object instance found in the graph.
@@ -385,84 +396,140 @@ func (g *ObjectGraph) FullWalk() (map[uint32]ObjectRef, error) {
 	return visited, nil
 }
 
-// stringPoolMagicGap is the same heuristic offset mad2iga/level.go's older
-// coordinate/name scanner uses to find where Section 0's string pool
-// "really" starts (skipping a leading region that isn't plain
-// null-terminated strings — see docs/CLASS_SCHEMA.md's naming
-// investigation for the history: originally reverse-engineered against
-// WaterholeBLD, not derived from a parsed header field, and known to not
-// generalize perfectly to every level). Duplicated here (not imported from
-// level.go) since ObjectGraph and level.go's scanner are independent
-// entry points with no shared type today.
-const stringPoolMagicGap = 0xA840
+// Section-0 fixup chunk types this walker reads for naming (see
+// ../docs/IGZ_FORMAT.md). chunkTypeTSTR is the string table; chunkTypeRSTR
+// is the set of field locations holding a TSTR index.
+const (
+	chunkTypeTSTR = 1
+	chunkTypeRSTR = 4
+)
 
-// StringPool lazily builds and caches a flat, sequentially-ordered list of
-// every null-terminated string in Section 0's string pool (starting at the
-// same heuristic +0xA840 boundary as level.go's scanner), with the same
-// 3-entry synthetic prefix level.go's own scanner prepends
-// (`"ttr", "OpMoveFrom", "igHandleList"`) — required for ResolveStringOrdinal
-// below to reproduce the same indexing.
-//
-// This is the *same* mechanism CLASS_SCHEMA.md's naming investigation
-// found unreliable for ActorInfo's own per-instance display name — but
-// confirmed (this session, see docs/SCRIPT_FORMAT.md) to correctly resolve
-// TFBScriptInfo's OpCreateVariable.varName to real, sensible variable names
-// (e.g. "total song beats", "combo counter") against a real VolcanoRave
-// level. Do not assume it resolves every ordinal-shaped field correctly —
-// e.g. ScriptSet's own inherited igNamedObject `_name` field reads a
-// similarly small-integer ordinal that, through this exact same table,
-// resolves to *unrelated* level-manifest filenames, not a display name.
-// Confirmed working for OpCreateVariable.varName only; treat any other
-// field skeptically until independently checked the same way.
-func (g *ObjectGraph) StringPool() []string {
-	if g.stringPool != nil {
-		return g.stringPool
+// buildStringTables parses Section 0's own chunk table (readChunkTable /
+// decodeChunkPatchValues, shared with chunktable.go) into the authoritative
+// TSTR string table (nameTable) and RSTR location set (stringLocs). Runs at
+// most once; on any structural problem it leaves the tables empty rather
+// than erroring, so naming degrades to "unresolved" instead of failing a
+// dump. This replaces the older heuristic string-pool scan — the TSTR table
+// is an explicit, ordered, count-prefixed list (no magic-gap boundary, no
+// synthetic prefix, no off-by-one), and RSTR is authoritative about which
+// words are name indices, so ActorInfo._name / OpCreateVariable._varName /
+// every other igString field resolve directly. Confirmed against real
+// levels (VolcanoRave: ActorInfo names "Rave_CS_Controller"/"Mid_CS_Gloria"/
+// …, _varName "menu items"/"rotate val"/…) — see docs/CLASS_SCHEMA.md's
+// "Naming investigation".
+func (g *ObjectGraph) buildStringTables() {
+	if g.tablesBuilt {
+		return
 	}
-	list := []string{"ttr", "OpMoveFrom", "igHandleList"}
-	if len(g.Sections) == 0 {
-		g.stringPool = list
-		return list
+	g.tablesBuilt = true
+	g.stringLocs = make(map[uint32]bool)
+
+	entries, err := readChunkTable(g.Data, g.Sec0Off)
+	if err != nil {
+		return
 	}
-	sec0Off := g.Sections[0].Offset
-	sec0Size := g.Sections[0].Size
-	if int(sec0Off)+0x30 > len(g.Data) {
-		g.stringPool = list
-		return list
-	}
-	strPoolOff := binary.LittleEndian.Uint32(g.Data[sec0Off+0x2C:])
-	realStart := sec0Off + strPoolOff + stringPoolMagicGap
-	poolEnd := sec0Off + sec0Size
-	if realStart >= poolEnd || poolEnd > uint32(len(g.Data)) {
-		g.stringPool = list
-		return list
-	}
-	pool := g.Data[realStart:poolEnd]
-	idx := 0
-	for idx < len(pool) {
-		end := idx
-		for end < len(pool) && pool[end] != 0 {
-			end++
+	for _, e := range entries {
+		switch e.Type {
+		case chunkTypeTSTR:
+			// `Count` null-terminated strings, read in order so index i maps
+			// to nameTable[i] even across any empty ("") entries.
+			g.nameTable = make([]string, 0, e.Count)
+			pos := e.PayloadStart()
+			end := e.PayloadEnd()
+			for i := uint32(0); i < e.Count && pos <= end && int(pos) <= len(g.Data); i++ {
+				s := pos
+				for pos < end && int(pos) < len(g.Data) && g.Data[pos] != 0 {
+					pos++
+				}
+				g.nameTable = append(g.nameTable, string(g.Data[s:pos]))
+				pos++ // step over the NUL terminator
+			}
+		case chunkTypeRSTR:
+			// Nibble-delta-encoded segmented pointers to the field words that
+			// hold a TSTR index. Resolve each to an absolute file offset.
+			if int(e.PayloadEnd()) > len(g.Data) {
+				continue
+			}
+			vals, derr := decodeChunkPatchValues(g.Data[e.PayloadStart():e.PayloadEnd()], e.Count)
+			if derr != nil {
+				continue
+			}
+			for _, v := range vals {
+				if abs, ok := g.ResolveSegPointer(v); ok {
+					g.stringLocs[abs] = true
+				}
+			}
 		}
-		if end > idx {
-			list = append(list, string(pool[idx:end]))
-		}
-		idx = end + 1
 	}
-	g.stringPool = list
-	return list
 }
 
-// ResolveStringOrdinal resolves a small integer (as read raw from a field
-// like OpCreateVariable.varName) to a string via StringPool, using the same
-// `list[ordinal+1]` indexing level.go's scanner uses. See StringPool's docs
-// for which fields this is actually confirmed correct for.
-func (g *ObjectGraph) ResolveStringOrdinal(ordinal uint32) (string, bool) {
-	pool := g.StringPool()
-	idx := int(ordinal) + 1
-	if idx < 0 || idx >= len(pool) {
+// ResolveName resolves the field word at an absolute file offset to a real
+// string, but only if that location is flagged in the RSTR table (i.e. is
+// genuinely a TSTR name index). This RSTR gate is what makes it authoritative
+// and false-positive-free — unlike blindly indexing the string table with any
+// small integer, which is how the old heuristic resolved unrelated fields to
+// bogus names. Returns ("", false) for any location RSTR does not flag.
+func (g *ObjectGraph) ResolveName(addr uint32) (string, bool) {
+	g.buildStringTables()
+	if !g.stringLocs[addr] {
 		return "", false
 	}
-	return pool[idx], true
+	idx, ok := g.ReadUint32(addr)
+	if !ok || int(idx) >= len(g.nameTable) {
+		return "", false
+	}
+	return g.nameTable[idx], true
+}
+
+// ResolveFieldName resolves a named field of obj to a real string via the
+// authoritative RSTR/TSTR tables (see ResolveName), looking the field's
+// offset up in the class schema. This is the correct, RSTR-gated way to read
+// igString fields (`_name`, `_varName`, …); it returns ("", false) for a
+// field whose location RSTR does not flag as a name index.
+func (g *ObjectGraph) ResolveFieldName(obj ObjectRef, fieldName string) (string, bool) {
+	fields, ok := ClassSchema(obj.ClassName)
+	if !ok {
+		return "", false
+	}
+	info, ok := fields[fieldName]
+	if !ok {
+		return "", false
+	}
+	fieldOff, ok := info.FieldOffset()
+	if !ok {
+		return "", false
+	}
+	return g.ResolveName(obj.Addr + uint32(fieldOff))
+}
+
+// NameTable returns the authoritative TSTR string table (lazily built). Used
+// by callers that want the whole flat string list (e.g. scanning for ".ai"
+// authoring-path references), where the old heuristic StringPool used to be.
+func (g *ObjectGraph) NameTable() []string {
+	g.buildStringTables()
+	return g.nameTable
+}
+
+// StringPool returns the authoritative TSTR string table (was a heuristic
+// magic-gap scan; now just NameTable). Retained for callers that want the
+// flat string list.
+func (g *ObjectGraph) StringPool() []string {
+	return g.NameTable()
+}
+
+// ResolveStringOrdinal resolves a raw TSTR index (a string-table ordinal) to
+// its string. This is the value-based, *ungated* form: correct when the
+// caller already knows the value is a genuine TSTR index (e.g. a live-trace
+// decoder reading an ordinal straight off a running engine, where no file
+// address exists to consult RSTR against — see mad2repack/rhythm_log_decode).
+// Prefer ResolveName/ResolveFieldName (RSTR-gated) whenever a file address is
+// available, since an arbitrary small integer is not guaranteed to be a name.
+func (g *ObjectGraph) ResolveStringOrdinal(ordinal uint32) (string, bool) {
+	g.buildStringTables()
+	if int(ordinal) >= len(g.nameTable) {
+		return "", false
+	}
+	return g.nameTable[ordinal], true
 }
 
 // FieldValue reads a known field of obj using the verified Wii-derived
@@ -485,6 +552,12 @@ func (g *ObjectGraph) FieldValue(obj ObjectRef, fieldName string) (interface{}, 
 	if fieldOff, ok := info.FieldOffset(); ok {
 		addr := obj.Addr + uint32(fieldOff)
 		if isStringOrdinal {
+			// Prefer the authoritative RSTR-gated resolve; fall back to the
+			// raw value (and a best-effort ungated lookup) only if this
+			// location isn't RSTR-flagged.
+			if s, ok := g.ResolveName(addr); ok {
+				return s, true
+			}
 			raw, ok := g.ReadUint32(addr)
 			if !ok {
 				return nil, false

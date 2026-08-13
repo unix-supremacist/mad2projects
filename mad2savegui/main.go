@@ -33,26 +33,62 @@ type Cheat struct {
 }
 
 // PC offsets. Wii offsets are PCOffset - PCGapSize for offsets >= PCGapOffset+PCGapSize.
+//
+// Confirmed this session by diffing two real PC save files (same autosave
+// point, one with every cheat toggled via mad2cheatapply/mad2climbprobe) --
+// the previous table here (and mad2launcher/saveeditor.go's identical
+// copy) was off by one slot for most of the block, claimed a phantom
+// "Buddy Pointer" at what's actually an unused/reserved slot (0x13c), and
+// was missing "Invis New York" entirely. See mad2launcher/saveeditor.go's
+// own comment for the full derivation and cross-check against
+// mad2cheatapply.cpp's live-memory offsets.
 var cheatsList = []Cheat{
-	{Name: "Infinite Sprint", PCOffset: 0x128, Key: "infiniteSprint", Desc: "Sprint without depleting energy"},
-	{Name: "Super Mangos", PCOffset: 0x12c, Key: "superMangos", Desc: "Increases standard health limits"},
-	{Name: "Head of the Game", PCOffset: 0x130, Key: "headOfTheGame", Desc: "Enables bobble head scaling"},
+	{Name: "Super Mangos", PCOffset: 0x128, Key: "superMangos", Desc: "Increases standard health limits"},
+	{Name: "Head of the Game", PCOffset: 0x12c, Key: "headOfTheGame", Desc: "Enables bobble head scaling"},
+	{Name: "Infinite Sprint", PCOffset: 0x130, Key: "infiniteSprint", Desc: "Sprint without depleting energy"},
 	{Name: "Penguin Projectile", PCOffset: 0x134, Key: "penguinProjectile", Desc: "Allows throwing penguin projectiles"},
 	{Name: "Unlock Levels", PCOffset: 0x138, Key: "unlockLevels", Desc: "Unlocks stage select levels"},
-	{Name: "Buddy Pointer", PCOffset: 0x13c, Key: "buddyPointer", Desc: "Shows compass/arrow helpers"},
-	{Name: "Debug Mode", PCOffset: 0x140, Key: "debugMode", Desc: "Developer debug logs/mode"},
-	{Name: "Fast Mango", PCOffset: 0x144, Key: "fastMango", Desc: "Increases gameplay speed"},
-	{Name: "Giant Frogs", PCOffset: 0x148, Key: "giantFrogs", Desc: "Scales frog targets larger"},
-	{Name: "Super Butt Bounce", PCOffset: 0x14c, Key: "superButtBounce", Desc: "Improves ground pound velocity"},
-	{Name: "Pepper at Will", PCOffset: 0x150, Key: "pepperAtWill", Desc: "Marty gets infinite pepper sprints"},
-	{Name: "Swim Backwards", PCOffset: 0x154, Key: "swimBackwards", Desc: "Reverses swimming speed"},
-	{Name: "Invulnerable Alex", PCOffset: 0x158, Key: "invulnAlex", Desc: "Invincibility for Alex"},
-	{Name: "Invulnerable Gloria", PCOffset: 0x15c, Key: "invulnGloria", Desc: "Invincibility for Gloria"},
-	{Name: "Invulnerable Marty", PCOffset: 0x160, Key: "invulnMarty", Desc: "Invincibility for Marty"},
-	{Name: "Invis New York", PCOffset: 0x164, Key: "invisNewYork", Desc: "Turns character invisible"},
-	{Name: "Golf Hole in One", PCOffset: 0x28c, Key: "golfHole", Desc: "Easier golf physics"},
+	// 0x13c is an unused/reserved slot -- see mad2launcher/saveeditor.go.
+	{Name: "Buddy Pointer", PCOffset: 0x140, Key: "buddyPointer", Desc: "Shows compass/arrow helpers"},
+	{Name: "Debug Mode", PCOffset: 0x144, Key: "debugMode", Desc: "Developer debug logs/mode"},
+	{Name: "Fast Mango", PCOffset: 0x148, Key: "fastMango", Desc: "Increases gameplay speed"},
+	{Name: "Giant Frogs", PCOffset: 0x14c, Key: "giantFrogs", Desc: "Scales frog targets larger"},
+	{Name: "Super Butt Bounce", PCOffset: 0x150, Key: "superButtBounce", Desc: "Improves ground pound velocity"},
+	{Name: "Pepper at Will", PCOffset: 0x154, Key: "pepperAtWill", Desc: "Marty gets infinite pepper sprints"},
+	{Name: "Swim Backwards", PCOffset: 0x158, Key: "swimBackwards", Desc: "Reverses swimming speed"},
+	{Name: "Invulnerable Alex", PCOffset: 0x15c, Key: "invulnAlex", Desc: "Invincibility for Alex"},
+	{Name: "Invulnerable Gloria", PCOffset: 0x160, Key: "invulnGloria", Desc: "Invincibility for Gloria"},
+	{Name: "Invulnerable Marty", PCOffset: 0x164, Key: "invulnMarty", Desc: "Invincibility for Marty"},
+	{Name: "Invis New York", PCOffset: 0x168, Key: "invisNewYork", Desc: "Turns character invisible"},
+	{Name: "Golf Bonus Hole", PCOffset: 0x28c, Key: "golfHole", Desc: "Easier golf physics"},
 	{Name: "Stop Ball", PCOffset: 0x2a0, Key: "ballStop", Desc: "Allows stopping ball instantly"},
 }
+
+// Story-progress ability flags -- climb (unlocked by completing Rites of
+// Passage) and monkey collectibles (unlocked by leaving Fix the Plane).
+// Found by hooking the game's own save-file writes across a real
+// playthrough and diffing consecutive writes, not by design like
+// cheatsList's dedicated per-cheat uint32 slots -- see
+// mad2launcher/saveeditor.go's identical fields for the full derivation.
+// Both live below PCGapOffset (0x120), so unlike cheatsList they need no
+// PC/Wii offset shift.
+const climbAbilityOffset = 0x70
+const monkeyCollectibleUint32Offset = 0x18
+
+var monkeyCollectibleByteFields = map[int]byte{
+	0x30: 1, 0x48: 1, 0x58: 1, 0x68: 2, 0x80: 1, 0xA8: 1, 0x3A0: 1, 0x3A4: 1,
+}
+
+// Coin economy -- found the same way (save-write hooking, cross-checked
+// live via direct memory pokes and reloading the save to confirm each
+// one). There is no single persistent "current coin balance" field: the
+// shop total is computed live as (sum of every level's own coin count) -
+// amountSpentOffset, and only the two operands are ever actually
+// persisted. waterholeCoinsOffset is Waterhole's own per-level coin count
+// specifically -- other levels almost certainly have their own slots
+// elsewhere in the save (not located this session).
+const amountSpentOffset = 0x0
+const waterholeCoinsOffset = 0x178
 
 func cheatOffset(c Cheat, isWii bool) int {
 	if isWii && c.PCOffset >= PCGapOffset+PCGapSize {
@@ -97,7 +133,7 @@ func swapEndianUint32(data []byte) {
 }
 
 // applyEdits writes the current UI values into the data buffer using native byte order.
-func applyEdits(data []byte, isWii bool, inputProgress, inputPlaytime *widget.Entry, cheatSelectors map[string]*widget.Select) error {
+func applyEdits(data []byte, isWii bool, inputProgress, inputPlaytime, inputAmountSpent, inputWaterholeCoins *widget.Entry, cheatSelectors map[string]*widget.Select, climbCheck, monkeysCheck *widget.Check) error {
 	percentVal, err := strconv.ParseFloat(inputProgress.Text, 64)
 	if err != nil {
 		return fmt.Errorf("invalid progress value: %w", err)
@@ -109,6 +145,36 @@ func applyEdits(data []byte, isWii bool, inputProgress, inputPlaytime *widget.En
 		return fmt.Errorf("invalid playtime value: %w", err)
 	}
 	writeU32(data, 4, uint32(playtimeVal), isWii)
+
+	amountSpentVal, err := strconv.ParseUint(inputAmountSpent.Text, 10, 32)
+	if err != nil {
+		return fmt.Errorf("invalid amount spent value: %w", err)
+	}
+	writeU32(data, amountSpentOffset, uint32(amountSpentVal), isWii)
+
+	waterholeCoinsVal, err := strconv.ParseUint(inputWaterholeCoins.Text, 10, 32)
+	if err != nil {
+		return fmt.Errorf("invalid Waterhole coins value: %w", err)
+	}
+	writeU32(data, waterholeCoinsOffset, uint32(waterholeCoinsVal), isWii)
+
+	if climbCheck.Checked {
+		data[climbAbilityOffset] = 1
+	} else {
+		data[climbAbilityOffset] = 0
+	}
+
+	if monkeysCheck.Checked {
+		writeU32(data, monkeyCollectibleUint32Offset, 0x00000000, isWii)
+		for off, val := range monkeyCollectibleByteFields {
+			data[off] = val
+		}
+	} else {
+		writeU32(data, monkeyCollectibleUint32Offset, 0xFFFFFFFF, isWii)
+		for off := range monkeyCollectibleByteFields {
+			data[off] = 0
+		}
+	}
 
 	for _, c := range cheatsList {
 		sel := cheatSelectors[c.Key]
@@ -217,10 +283,19 @@ func main() {
 	inputProgress.SetPlaceHolder("e.g. 62.83")
 	inputPlaytime := widget.NewEntry()
 	inputPlaytime.SetPlaceHolder("Playtime tick count")
+	inputAmountSpent := widget.NewEntry()
+	inputAmountSpent.SetPlaceHolder("Total coins spent in shops (persists across all levels)")
+	inputWaterholeCoins := widget.NewEntry()
+	inputWaterholeCoins.SetPlaceHolder("Waterhole's own coin count")
+
+	climbCheck := widget.NewCheck("Climb Ability (unlocked by completing Rites of Passage)", nil)
+	monkeysCheck := widget.NewCheck("Monkey Collectibles (unlocked by leaving Fix the Plane)", nil)
 
 	formGeneral := widget.NewForm(
 		widget.NewFormItem("Progress (%)", inputProgress),
 		widget.NewFormItem("Playtime Ticks", inputPlaytime),
+		widget.NewFormItem("Amount Spent", inputAmountSpent),
+		widget.NewFormItem("Waterhole Coins", inputWaterholeCoins),
 	)
 
 	// Cheats scroll container layout
@@ -247,6 +322,10 @@ func main() {
 	// Disable editing widgets until loaded
 	inputProgress.Disable()
 	inputPlaytime.Disable()
+	inputAmountSpent.Disable()
+	inputWaterholeCoins.Disable()
+	climbCheck.Disable()
+	monkeysCheck.Disable()
 	cheatsContainer.Hide()
 
 	// Load Save Logic
@@ -288,6 +367,15 @@ func main() {
 			playtimeVal := readU32(data, 4, currentIsWii)
 			inputPlaytime.SetText(strconv.FormatUint(uint64(playtimeVal), 10))
 
+			amountSpentVal := readU32(data, amountSpentOffset, currentIsWii)
+			inputAmountSpent.SetText(strconv.FormatUint(uint64(amountSpentVal), 10))
+
+			waterholeCoinsVal := readU32(data, waterholeCoinsOffset, currentIsWii)
+			inputWaterholeCoins.SetText(strconv.FormatUint(uint64(waterholeCoinsVal), 10))
+
+			climbCheck.SetChecked(data[climbAbilityOffset] != 0)
+			monkeysCheck.SetChecked(readU32(data, monkeyCollectibleUint32Offset, currentIsWii) == 0)
+
 			// Parse cheats at platform-correct offsets
 			for _, c := range cheatsList {
 				off := cheatOffset(c, currentIsWii)
@@ -310,6 +398,10 @@ func main() {
 			lblPlatform.SetText(fmt.Sprintf("Detected Platform: %s", platform))
 			inputProgress.Enable()
 			inputPlaytime.Enable()
+			inputAmountSpent.Enable()
+			inputWaterholeCoins.Enable()
+			climbCheck.Enable()
+			monkeysCheck.Enable()
 			cheatsContainer.Show()
 			btnSave.Enable()
 			btnExportPC.Enable()
@@ -348,7 +440,7 @@ func main() {
 		if len(currentData) < 16 {
 			return
 		}
-		if err := applyEdits(currentData, currentIsWii, inputProgress, inputPlaytime, cheatSelectors); err != nil {
+		if err := applyEdits(currentData, currentIsWii, inputProgress, inputPlaytime, inputAmountSpent, inputWaterholeCoins, cheatSelectors, climbCheck, monkeysCheck); err != nil {
 			dialog.ShowError(err, w)
 			return
 		}
@@ -361,7 +453,7 @@ func main() {
 			return
 		}
 		// Apply edits in native format first
-		if err := applyEdits(currentData, currentIsWii, inputProgress, inputPlaytime, cheatSelectors); err != nil {
+		if err := applyEdits(currentData, currentIsWii, inputProgress, inputPlaytime, inputAmountSpent, inputWaterholeCoins, cheatSelectors, climbCheck, monkeysCheck); err != nil {
 			dialog.ShowError(err, w)
 			return
 		}
@@ -376,7 +468,7 @@ func main() {
 			return
 		}
 		// Apply edits in native format first
-		if err := applyEdits(currentData, currentIsWii, inputProgress, inputPlaytime, cheatSelectors); err != nil {
+		if err := applyEdits(currentData, currentIsWii, inputProgress, inputPlaytime, inputAmountSpent, inputWaterholeCoins, cheatSelectors, climbCheck, monkeysCheck); err != nil {
 			dialog.ShowError(err, w)
 			return
 		}
@@ -394,6 +486,9 @@ func main() {
 
 	content := container.NewBorder(topSection, bottomSection, nil, nil, container.NewVBox(
 		formGeneral,
+		widget.NewLabelWithStyle("Story-Progress Ability Flags", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
+		climbCheck,
+		monkeysCheck,
 		widget.NewLabelWithStyle("Cheat Options", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
 		scrollCheats,
 	))

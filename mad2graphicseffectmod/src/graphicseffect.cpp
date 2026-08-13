@@ -149,6 +149,27 @@ struct Config {
     EffectTiming thermalInversion{6, 10000, 20000};
     EffectTiming melt{6, 10000, 20000};
     EffectTiming invertedCulling{6, 8000, 15000};
+    // LowFps: configurable pool of terrible framerates to randomly pick from.
+    // Comma-separated list. Default: 1,2,3,5,8,10,15.
+    // (Stored as individual values after parsing at config-load time.)
+    int lowFpsValues[16] = {1, 2, 3, 5, 8, 10, 15};
+    int lowFpsValueCount = 7;
+    // CRTScanlines
+    EffectTiming crtScanlines{8, 10000, 20000};
+    int crtScanlineScale = 4;       // scanline texture height in texels
+    float crtScrollSpeed = 1.0f;    // tracking bar scroll speed multiplier
+    // DoubleVision
+    EffectTiming doubleVision{8, 10000, 20000};
+    int doubleVisionBaseOffset = 20;     // base pixel offset
+    int doubleVisionDriftAmplitude = 5;  // sinusoidal drift range in px
+    float doubleVisionDriftPeriod = 3.0f; // drift oscillation period in seconds
+    // DutchRoll
+    EffectTiming dutchRoll{8, 8000, 15000};
+    // TextureTileGrid
+    EffectTiming textureTileGrid{8, 10000, 20000};
+    bool tileGridAllow2x2 = true;
+    bool tileGridAllow3x3 = true;
+    bool tileGridAllow4x4 = true;
 } g_Config;
 
 static void LoadTiming(const Mad2ConfigApi& api, const char* prefix, EffectTiming& t, const char* comment) {
@@ -192,7 +213,7 @@ static void EnsureConfigLoaded() {
     LoadTiming(api, "SineDisplace", g_Config.sineDisplace, "SineDisplace: chance-pool weight/duration.");
     LoadTiming(api, "Kaleidoscope", g_Config.kaleidoscope, "Kaleidoscope: chance-pool weight/duration.");
     LoadTiming(api, "Echo", g_Config.echo, "Echo: chance-pool weight/duration.");
-    LoadTiming(api, "LowFps", g_Config.lowFps, "LowFps: chance-pool weight/duration. Caps rendering to ~3fps.");
+    LoadTiming(api, "LowFps", g_Config.lowFps, "LowFps: chance-pool weight/duration. Randomly caps rendering to a terrible framerate from LowFpsValues.");
     LoadTiming(api, "ThermalInversion", g_Config.thermalInversion,
                "ThermalInversion: chance-pool weight/duration. Approximated by zeroing 2 of 3 color channels "
                "(cycling which one survives) rather than true grayscale -- see file header.");
@@ -203,6 +224,67 @@ static void EnsureConfigLoaded() {
                "should be. Not a post-process effect like the others above (it hooks SetRenderState directly, "
                "not the ping-pong pipeline) -- discovered as an accidental bug while debugging mad2mirrormod's "
                "own projection-mirroring technique, and it looked cool enough to keep as a real effect.");
+
+    // LowFps: parse comma-separated FPS values list.
+    if (api.GetString) {
+        char valsBuf[128];
+        api.GetString("GraphicsEffects", "LowFpsValues", "1,2,3,5,8,10,15",
+                       "LowFps: comma-separated list of terrible framerates to randomly pick from each trigger.",
+                       valsBuf, sizeof(valsBuf));
+        // Parse manually -- no strtok_r in MinGW, use strtok which is fine here
+        // since this runs only once at init.
+        g_Config.lowFpsValueCount = 0;
+        char* tok = strtok(valsBuf, ",");
+        while (tok && g_Config.lowFpsValueCount < 16) {
+            int v = atoi(tok);
+            if (v >= 1 && v <= 120) g_Config.lowFpsValues[g_Config.lowFpsValueCount++] = v;
+            tok = strtok(nullptr, ",");
+        }
+        if (g_Config.lowFpsValueCount == 0) {
+            // Fallback if parsing produces nothing valid.
+            g_Config.lowFpsValues[0] = 3;
+            g_Config.lowFpsValueCount = 1;
+        }
+    }
+    // (If GetString is unavailable, g_Config.lowFpsValues stays at its built-in defaults.)
+
+    // CRTScanlines config.
+    LoadTiming(api, "CRTScanlines", g_Config.crtScanlines,
+               "CRTScanlines: retro CRT/VHS scanline overlay. Chance-pool weight/duration.");
+    g_Config.crtScanlineScale = api.GetInt("GraphicsEffects", "CRTScanlineScale", g_Config.crtScanlineScale,
+                                            "CRTScanlines: scanline texture height in texels (controls density).");
+    if (g_Config.crtScanlineScale < 1) g_Config.crtScanlineScale = 1;
+    g_Config.crtScrollSpeed = static_cast<float>(
+        api.GetInt("GraphicsEffects", "CRTScrollSpeed100", static_cast<int>(g_Config.crtScrollSpeed * 100),
+                   "CRTScanlines: tracking bar scroll speed multiplier x100 (100 = 1.0).")) / 100.0f;
+
+    // DoubleVision config.
+    LoadTiming(api, "DoubleVision", g_Config.doubleVision,
+               "DoubleVision: spatial double-image diplopia. Chance-pool weight/duration.");
+    g_Config.doubleVisionBaseOffset = api.GetInt("GraphicsEffects", "DoubleVisionBaseOffset",
+                                                   g_Config.doubleVisionBaseOffset, "DoubleVision: base pixel offset.");
+    g_Config.doubleVisionDriftAmplitude = api.GetInt("GraphicsEffects", "DoubleVisionDriftAmplitude",
+                                                       g_Config.doubleVisionDriftAmplitude,
+                                                       "DoubleVision: sinusoidal drift range in pixels.");
+    g_Config.doubleVisionDriftPeriod = static_cast<float>(
+        api.GetInt("GraphicsEffects", "DoubleVisionDriftPeriod100",
+                   static_cast<int>(g_Config.doubleVisionDriftPeriod * 100),
+                   "DoubleVision: drift oscillation period in seconds x100.")) / 100.0f;
+    if (g_Config.doubleVisionDriftPeriod < 0.1f) g_Config.doubleVisionDriftPeriod = 0.1f;
+
+    // DutchRoll config.
+    LoadTiming(api, "DutchRoll", g_Config.dutchRoll,
+               "DutchRoll: seasick camera roll, oscillates +/-25 to +/-35 degrees. Chance-pool weight/duration.");
+
+    // TextureTileGrid config.
+    LoadTiming(api, "TextureTileGrid", g_Config.textureTileGrid,
+               "TextureTileGrid: security-monitor grid of mirrored screens. Chance-pool weight/duration.");
+    g_Config.tileGridAllow2x2 = api.GetBool("GraphicsEffects", "TextureTileGridAllow2x2",
+                                              g_Config.tileGridAllow2x2, "TextureTileGrid: allow 2x2 grid.") != FALSE;
+    g_Config.tileGridAllow3x3 = api.GetBool("GraphicsEffects", "TextureTileGridAllow3x3",
+                                              g_Config.tileGridAllow3x3, "TextureTileGrid: allow 3x3 grid.") != FALSE;
+    g_Config.tileGridAllow4x4 = api.GetBool("GraphicsEffects", "TextureTileGridAllow4x4",
+                                              g_Config.tileGridAllow4x4, "TextureTileGrid: allow 4x4 grid.") != FALSE;
 
     Log("Config loaded.\n");
 }
@@ -1129,16 +1211,28 @@ static void Render_Echo(IDirect3DDevice9* dev, IDirect3DTexture9* src, int vpW, 
     DrawQuad(dev, 0, 0, w, h, 0, 0, 1, 1);
 }
 
-// -- LowFps (cap capture/redraw to ~3fps) --
+// -- LowFps (cap capture/redraw to a randomly-chosen terrible framerate) --
 static IDirect3DTexture9* g_LowFpsTex = nullptr;
 static IDirect3DSurface9* g_LowFpsSurf = nullptr;
 static UINT g_LowFpsW = 0, g_LowFpsH = 0;
 static uint64_t g_LowFpsLastCaptureMs = 0;
 static std::atomic<bool> g_LowFpsActive{false};
-static const int kLowFpsIntervalMs = 333;  // ~3fps
+static int g_LowFpsIntervalMs = 333;  // chosen fresh on each Apply
 static void WINAPI ApplyLowFps(void*) {
-    g_LowFpsLastCaptureMs = 0;  // force an immediate capture on first frame
+    // Pick a random FPS from the configured pool and compute the interval.
+    int fpsCount = g_Config.lowFpsValueCount;
+    int fps = (fpsCount > 0) ? g_Config.lowFpsValues[rand() % fpsCount] : 3;
+    if (fps < 1) fps = 1;
+    g_LowFpsIntervalMs = 1000 / fps;
+    g_LowFpsLastCaptureMs = 0;  // force immediate capture on first frame
     g_LowFpsActive.store(true);
+
+    char displayName[64];
+    snprintf(displayName, sizeof(displayName), "Low Framerate (%d FPS)", fps);
+    if (const auto& effects = Mad2Effects_Resolve(); effects.SetDisplayName) {
+        effects.SetDisplayName("LowFps", displayName);
+    }
+    Log("LowFps applied (%d FPS, interval=%dms)\n", fps, g_LowFpsIntervalMs);
 }
 // Releases the low-fps capture texture/surface without touching
 // g_LowFpsActive -- shared by ClearLowFps and the device Reset() hook, same
@@ -1172,7 +1266,7 @@ static void Render_LowFps(IDirect3DDevice9* dev, IDirect3DTexture9* src, int vpW
         g_LowFpsLastCaptureMs = 0;
     }
 
-    if (nowMs - g_LowFpsLastCaptureMs >= static_cast<uint64_t>(kLowFpsIntervalMs)) {
+    if (nowMs - g_LowFpsLastCaptureMs >= static_cast<uint64_t>(g_LowFpsIntervalMs)) {
         IDirect3DSurface9* srcSurf = nullptr;
         src->GetSurfaceLevel(0, &srcSurf);
         dev->StretchRect(srcSurf, nullptr, g_LowFpsSurf, nullptr, D3DTEXF_NONE);
@@ -1220,6 +1314,230 @@ static void Render_ThermalInversion(IDirect3DDevice9* dev, IDirect3DTexture9* sr
     }
 }
 
+// -- CRTScanlines (retro CRT/VHS scanline overlay) --
+// A 1D scanline texture (1 wide x crtScanlineScale tall) alternates
+// between a dark semi-transparent row and a clear row. Rendered as a
+// single full-screen quad with WRAP addressing and an animated V offset
+// to scroll the scanlines down over time, giving the VHS-tracking effect.
+static std::atomic<bool> g_CRTScanlinesActive{false};
+static IDirect3DTexture9* g_ScanlineTex = nullptr;
+static uint64_t g_CRTStartMs = 0;
+
+static bool EnsureScanlineTexture(IDirect3DDevice9* dev) {
+    if (g_ScanlineTex) return true;
+    // 1 x (crtScanlineScale * 2) texture: one dark texel, one clear texel
+    // repeated (scale times). The pattern is: dark row = 0x88000000 (semi-
+    // transparent black), clear row = 0x00000000 (fully transparent).
+    int scale = g_Config.crtScanlineScale;
+    if (scale < 1) scale = 1;
+    int texH = scale * 2;  // dark + clear, repeated
+    if (FAILED(dev->CreateTexture(1, texH, 1, 0, D3DFMT_A8R8G8B8, D3DPOOL_MANAGED, &g_ScanlineTex, nullptr))) {
+        return false;
+    }
+    D3DLOCKED_RECT locked;
+    if (FAILED(g_ScanlineTex->LockRect(0, &locked, nullptr, 0))) {
+        g_ScanlineTex->Release();
+        g_ScanlineTex = nullptr;
+        return false;
+    }
+    for (int y = 0; y < texH; ++y) {
+        auto* row = reinterpret_cast<uint32_t*>(reinterpret_cast<uint8_t*>(locked.pBits) + y * locked.Pitch);
+        // dark rows (first half of each scale-pair)
+        row[0] = (y % 2 == 0) ? 0x88000000u : 0x00000000u;
+    }
+    g_ScanlineTex->UnlockRect(0);
+    Log("CRTScanlines: scanline texture baked (1x%d)\n", texH);
+    return true;
+}
+
+static void WINAPI ApplyCRTScanlines(void*) {
+    g_CRTStartMs = GetTickCount64();
+    g_CRTScanlinesActive.store(true);
+    Log("CRTScanlines applied\n");
+}
+static void WINAPI ClearCRTScanlines(void*) {
+    g_CRTScanlinesActive.store(false);
+    Log("CRTScanlines cleared\n");
+}
+static void Render_CRTScanlines(IDirect3DDevice9* dev, IDirect3DTexture9* src, int vpW, int vpH, uint64_t nowMs) {
+    float w = static_cast<float>(vpW), h = static_cast<float>(vpH);
+    // First pass: draw the source through unchanged.
+    SetPassthroughTextureState(dev, src, D3DTEXF_POINT);
+    DrawQuad(dev, 0, 0, w, h, 0, 0, 1, 1);
+
+    // Second pass: overlay the scanline texture with alpha blending.
+    if (!EnsureScanlineTexture(dev)) return;
+    // Animate V offset to scroll downward.
+    float elapsed = (nowMs - g_CRTStartMs) / 1000.0f;
+    float vOff = elapsed * g_Config.crtScrollSpeed * 0.5f;  // 0.5 cycles/sec at speed=1.0
+    // UV: U covers [0,1] (1 texel wide, wraps), V covers [0, vpH/texH] (tiled).
+    float scale = static_cast<float>(g_Config.crtScanlineScale);
+    float vRepeat = h / (scale * 2.0f);
+    dev->SetTexture(0, g_ScanlineTex);
+    dev->SetSamplerState(0, D3DSAMP_MINFILTER, D3DTEXF_POINT);
+    dev->SetSamplerState(0, D3DSAMP_MAGFILTER, D3DTEXF_POINT);
+    dev->SetSamplerState(0, D3DSAMP_ADDRESSU, D3DTADDRESS_WRAP);
+    dev->SetSamplerState(0, D3DSAMP_ADDRESSV, D3DTADDRESS_WRAP);
+    dev->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_SELECTARG1);
+    dev->SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);
+    dev->SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_SELECTARG1);
+    dev->SetTextureStageState(0, D3DTSS_ALPHAARG1, D3DTA_TEXTURE);
+    dev->SetRenderState(D3DRS_ALPHABLENDENABLE, TRUE);
+    dev->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_SRCALPHA);
+    dev->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_INVSRCALPHA);
+    dev->SetRenderState(D3DRS_COLORWRITEENABLE, D3DCOLORWRITEENABLE_RED | D3DCOLORWRITEENABLE_GREEN |
+                                                    D3DCOLORWRITEENABLE_BLUE | D3DCOLORWRITEENABLE_ALPHA);
+    dev->SetFVF(D3DFVF_XYZRHW | D3DFVF_TEX1);
+    DrawQuad(dev, 0, 0, w, h, 0, vOff, 1.0f, vOff + vRepeat);
+}
+
+// -- DoubleVision (spatial diplopia: single-frame dual-image at 50% alpha) --
+// Unlike Echo (temporal blur across frames), this renders the current frame
+// twice: once at normal coords, once offset sinusoidally, at 50% opacity.
+// Even with the player standing still, every element appears doubled.
+struct DoubleVisionState {
+    uint64_t startMs = 0;
+};
+static DoubleVisionState g_DoubleVisionState;
+static std::atomic<bool> g_DoubleVisionActive{false};
+static void WINAPI ApplyDoubleVision(void*) {
+    g_DoubleVisionState.startMs = GetTickCount64();
+    g_DoubleVisionActive.store(true);
+    Log("DoubleVision applied\n");
+}
+static void WINAPI ClearDoubleVision(void*) {
+    g_DoubleVisionActive.store(false);
+    Log("DoubleVision cleared\n");
+}
+static void Render_DoubleVision(IDirect3DDevice9* dev, IDirect3DTexture9* src, int vpW, int vpH, uint64_t nowMs) {
+    float w = static_cast<float>(vpW), h = static_cast<float>(vpH);
+    // Pass 1: draw source at normal position.
+    SetPassthroughTextureState(dev, src, D3DTEXF_LINEAR);
+    dev->SetSamplerState(0, D3DSAMP_ADDRESSU, D3DTADDRESS_CLAMP);
+    dev->SetSamplerState(0, D3DSAMP_ADDRESSV, D3DTADDRESS_CLAMP);
+    DrawQuad(dev, 0, 0, w, h, 0, 0, 1, 1);
+
+    // Pass 2: draw source shifted by sinusoidal drift at 50% opacity.
+    float elapsedSec = (nowMs - g_DoubleVisionState.startMs) / 1000.0f;
+    float driftPhase = elapsedSec * (6.28318f / g_Config.doubleVisionDriftPeriod);
+    float driftX = g_Config.doubleVisionDriftAmplitude * sinf(driftPhase);
+    float driftY = g_Config.doubleVisionDriftAmplitude * cosf(driftPhase * 0.7f);
+    float baseOff = static_cast<float>(g_Config.doubleVisionBaseOffset);
+    float offX = baseOff + driftX;
+    float offY = driftY;
+    // UV shift: move sample point in the opposite direction of screen shift.
+    float du = -offX / w, dv = -offY / h;
+
+    dev->SetTexture(0, src);
+    dev->SetSamplerState(0, D3DSAMP_MINFILTER, D3DTEXF_LINEAR);
+    dev->SetSamplerState(0, D3DSAMP_MAGFILTER, D3DTEXF_LINEAR);
+    dev->SetSamplerState(0, D3DSAMP_ADDRESSU, D3DTADDRESS_CLAMP);
+    dev->SetSamplerState(0, D3DSAMP_ADDRESSV, D3DTADDRESS_CLAMP);
+    dev->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_SELECTARG1);
+    dev->SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);
+    dev->SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_SELECTARG2);
+    dev->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_DIFFUSE);
+    dev->SetRenderState(D3DRS_ALPHABLENDENABLE, TRUE);
+    dev->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_SRCALPHA);
+    dev->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_INVSRCALPHA);
+    dev->SetRenderState(D3DRS_COLORWRITEENABLE, D3DCOLORWRITEENABLE_RED | D3DCOLORWRITEENABLE_GREEN |
+                                                    D3DCOLORWRITEENABLE_BLUE | D3DCOLORWRITEENABLE_ALPHA);
+    dev->SetFVF(D3DFVF_XYZRHW | D3DFVF_DIFFUSE | D3DFVF_TEX1);
+    struct AlphaTexVertex { float x, y, z, rhw; DWORD color; float u, v; };
+    DWORD halfAlpha = 0x80u << 24;  // 50% opacity
+    AlphaTexVertex verts[4] = {
+        {0,  0,  0, 1, halfAlpha, du,        dv        },
+        {w,  0,  0, 1, halfAlpha, 1.0f + du, dv        },
+        {0,  h,  0, 1, halfAlpha, du,        1.0f + dv },
+        {w,  h,  0, 1, halfAlpha, 1.0f + du, 1.0f + dv },
+    };
+    dev->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 2, verts, sizeof(AlphaTexVertex));
+}
+
+// -- DutchRoll (seasick camera roll: sinusoidal tilt oscillation) --
+// Uses ComputeAffineCornerUVs with a time-varying tilt angle and a slight
+// zoom-in to prevent the corners from showing empty space at max tilt.
+struct DutchRollState {
+    uint64_t startMs = 0;
+    float amplitudeDeg = 0;  // peak tilt angle in degrees
+    float freqHz = 0;
+    float phase = 0;
+};
+static DutchRollState g_DutchRollState;
+static std::atomic<bool> g_DutchRollActive{false};
+static void WINAPI ApplyDutchRoll(void*) {
+    g_DutchRollState.startMs = GetTickCount64();
+    g_DutchRollState.amplitudeDeg = RandRangeF(25.0f, 35.0f);
+    g_DutchRollState.freqHz = RandRangeF(0.15f, 0.35f);  // slow, gentle sway
+    g_DutchRollState.phase = RandRangeF(0.0f, 6.28318f);
+    g_DutchRollActive.store(true);
+    Log("DutchRoll applied (amp=%.1f deg, freq=%.2f Hz)\n",
+        g_DutchRollState.amplitudeDeg, g_DutchRollState.freqHz);
+}
+static void WINAPI ClearDutchRoll(void*) {
+    g_DutchRollActive.store(false);
+    Log("DutchRoll cleared\n");
+}
+static void Render_DutchRoll(IDirect3DDevice9* dev, IDirect3DTexture9* src, int vpW, int vpH, uint64_t nowMs) {
+    float elapsedSec = (nowMs - g_DutchRollState.startMs) / 1000.0f;
+    float angleDeg = g_DutchRollState.amplitudeDeg *
+                     sinf(g_DutchRollState.phase + elapsedSec * g_DutchRollState.freqHz * 6.28318f);
+    float angleRad = angleDeg * (3.14159265f / 180.0f);
+    // Slight zoom-in proportional to |sin(angle)|: prevents corner clipping
+    // at max tilt. The maximum needed zoom is 1/cos(maxAngle). At 35 deg,
+    // cos(35 deg) ~= 0.819, so ~1.22x zoom is the worst-case.
+    float cosA = cosf(fabsf(angleRad));
+    float zoomIn = (cosA > 0.05f) ? (1.0f / cosA) : 20.0f;
+    // Apply the tilt via ComputeAffineCornerUVs (rotation + zoom).
+    float uv[4][2];
+    ComputeAffineCornerUVs(angleRad, zoomIn, uv);
+    SetPassthroughTextureState(dev, src, D3DTEXF_LINEAR);
+    dev->SetSamplerState(0, D3DSAMP_ADDRESSU, D3DTADDRESS_CLAMP);
+    dev->SetSamplerState(0, D3DSAMP_ADDRESSV, D3DTADDRESS_CLAMP);
+    DrawQuadCornerUV(dev, 0, 0, static_cast<float>(vpW), static_cast<float>(vpH), uv);
+}
+
+// -- TextureTileGrid (security monitor matrix: mirrored tiled screens) --
+// Renders the backbuffer with UV coords > 1.0 using MIRROR addressing,
+// producing a 2x2, 3x3, or 4x4 grid of mirrored copies.
+struct TextureTileGridState {
+    int gridSize = 2;  // number of tiles per axis (2, 3, or 4)
+};
+static TextureTileGridState g_TileGridState;
+static std::atomic<bool> g_TileGridActive{false};
+static void WINAPI ApplyTextureTileGrid(void*) {
+    // Build list of allowed grid sizes from config.
+    int allowed[3];
+    int count = 0;
+    if (g_Config.tileGridAllow2x2) allowed[count++] = 2;
+    if (g_Config.tileGridAllow3x3) allowed[count++] = 3;
+    if (g_Config.tileGridAllow4x4) allowed[count++] = 4;
+    if (count == 0) { allowed[0] = 2; count = 1; }  // fallback
+    g_TileGridState.gridSize = allowed[rand() % count];
+    g_TileGridActive.store(true);
+
+    char displayName[64];
+    snprintf(displayName, sizeof(displayName), "Security Monitor (%dx%d)",
+             g_TileGridState.gridSize, g_TileGridState.gridSize);
+    if (const auto& effects = Mad2Effects_Resolve(); effects.SetDisplayName) {
+        effects.SetDisplayName("TextureTileGrid", displayName);
+    }
+    Log("TextureTileGrid applied (%dx%d)\n", g_TileGridState.gridSize, g_TileGridState.gridSize);
+}
+static void WINAPI ClearTextureTileGrid(void*) {
+    g_TileGridActive.store(false);
+    Log("TextureTileGrid cleared\n");
+}
+static void Render_TextureTileGrid(IDirect3DDevice9* dev, IDirect3DTexture9* src, int vpW, int vpH, uint64_t) {
+    float w = static_cast<float>(vpW), h = static_cast<float>(vpH);
+    float n = static_cast<float>(g_TileGridState.gridSize);
+    // UV [0, n] with MIRROR addressing tiles and mirrors the image n times.
+    SetPassthroughTextureState(dev, src, D3DTEXF_LINEAR);
+    dev->SetSamplerState(0, D3DSAMP_ADDRESSU, D3DTADDRESS_MIRROR);
+    dev->SetSamplerState(0, D3DSAMP_ADDRESSV, D3DTADDRESS_MIRROR);
+    DrawQuad(dev, 0, 0, w, h, 0, 0, n, n);
+}
+
 // ---------------------------------------------------------------------
 // Pipeline orchestration.
 // ---------------------------------------------------------------------
@@ -1256,6 +1574,10 @@ static PipelineEffect g_Pipeline[] = {
     {"LowFps", &g_LowFpsActive, Render_LowFps},
     {"ThermalInversion", &g_ThermalInversionActive, Render_ThermalInversion},
     {"Melt", &g_MeltActive, Render_Melt},
+    {"CRTScanlines", &g_CRTScanlinesActive, Render_CRTScanlines},
+    {"DoubleVision", &g_DoubleVisionActive, Render_DoubleVision},
+    {"DutchRoll", &g_DutchRollActive, Render_DutchRoll},
+    {"TextureTileGrid", &g_TileGridActive, Render_TextureTileGrid},
 };
 
 static bool g_EffectsRegistered = false;
@@ -1303,6 +1625,11 @@ static void EnsureEffectsRegistered() {
     RegisterEffect("Melt", "Screen Melt", g_Config.melt, ApplyMelt, ClearMelt);
     RegisterEffect("InvertedCulling", "Inside-Out World", g_Config.invertedCulling, ApplyInvertedCulling,
                     ClearInvertedCulling);
+    RegisterEffect("CRTScanlines", "CRT Scanlines", g_Config.crtScanlines, ApplyCRTScanlines, ClearCRTScanlines);
+    RegisterEffect("DoubleVision", "Double Vision", g_Config.doubleVision, ApplyDoubleVision, ClearDoubleVision);
+    RegisterEffect("DutchRoll", "Dutch Roll", g_Config.dutchRoll, ApplyDutchRoll, ClearDutchRoll);
+    RegisterEffect("TextureTileGrid", "Security Monitor", g_Config.textureTileGrid, ApplyTextureTileGrid,
+                    ClearTextureTileGrid);
 
     g_EffectsRegistered = true;
 }

@@ -284,6 +284,16 @@ func main() {
 			os.Exit(1)
 		}
 
+	case "script-pretty":
+		if len(args) < 2 {
+			fmt.Fprintf(os.Stderr, "Usage: mad2repack script-pretty <level.bld> <output.txt>\n")
+			os.Exit(1)
+		}
+		if err := cmdScriptPretty(args[0], args[1]); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+
 	case "rhythm-log-decode":
 		if len(args) < 3 {
 			fmt.Fprintf(os.Stderr, "Usage: mad2repack rhythm-log-decode <rhythmlogger.log> <level.bld> <output.txt>\n")
@@ -381,6 +391,7 @@ func printUsage() {
 	fmt.Fprintf(os.Stderr, "  objects-dump <bld> <out.json> Dump the real object graph (class + known fields), not a byte-pattern guess\n")
 	fmt.Fprintf(os.Stderr, "  objects-compile <orig.bld> <edits.json> <out.bld> Apply byte-exact field edits (PC-verified float fields only) to a real level.bld\n")
 	fmt.Fprintf(os.Stderr, "  script-dump <bld> <out.json>  Recursively dump the TFBScriptInfo graph (ScriptInfo/ScriptSet/Op* opcodes)\n")
+	fmt.Fprintf(os.Stderr, "  script-pretty <bld> <out.txt> Render the same graph as human-readable pseudocode (IF/FOREACH/SET blocks)\n")
 	fmt.Fprintf(os.Stderr, "  rhythm-log-decode <log> <bld> <out.txt>  Decode mad2rhythmlogger.dll's runtime log against a level.bld\n")
 	fmt.Fprintf(os.Stderr, "  snd-extract <in.snds> <out>     Decode one .snds to a playable file (.wav or .ogg, chosen automatically)\n")
 	fmt.Fprintf(os.Stderr, "  snd-extract-all <dir> <outdir>  Recursively decode every .snds under dir, mirroring its directory structure\n")

@@ -38,15 +38,79 @@ build:
     [ -d {{build_dir}} ] || just configure
     cmake --build {{build_dir}}
 
+# Stages the fetched FCEUmm core + roms/{smb1.nes,smb2j.fds,disksys.rom}
+# into <dir>/nescore/ for mad2nesmod.dll's NesChallenge/
+# NesLostLevelsChallenge effects (see mad2nesmod/src/nesmod.cpp).
+# Best-effort: warns and leaves whichever piece is missing unstaged rather
+# than failing the whole deploy, same "degrade gracefully" precedent as
+# _play's sm64_bin/jak1_dir checks -- each effect just logs a load failure
+# and never activates if its own ROM (or, for Lost Levels, the FDS BIOS)
+# isn't there yet.
+_deploy-nes dir:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    mkdir -p "{{dir}}/nescore"
+    core="{{justfile_directory()}}/extern/.libretro-cores/fceumm_libretro.dll"
+    if [ -f "$core" ]; then
+        cp "$core" "{{dir}}/nescore/fceumm_libretro.dll"
+    else
+        echo "Warning: $core not found (run 'just fetch-libretro-fceumm' first) -- NES effects' core won't load this session" >&2
+    fi
+    rom="{{justfile_directory()}}/roms/smb1.nes"
+    if [ -f "$rom" ]; then
+        cp "$rom" "{{dir}}/nescore/smb1.nes"
+    else
+        echo "Warning: $rom not found (see roms/README.md) -- NesChallenge's ROM won't load this session" >&2
+    fi
+    rom2="{{justfile_directory()}}/roms/smb2j.fds"
+    if [ -f "$rom2" ]; then
+        cp "$rom2" "{{dir}}/nescore/smb2j.fds"
+    else
+        echo "Warning: $rom2 not found (see roms/README.md) -- NesLostLevelsChallenge's ROM won't load this session" >&2
+    fi
+    fdsbios="{{justfile_directory()}}/roms/disksys.rom"
+    if [ -f "$fdsbios" ]; then
+        cp "$fdsbios" "{{dir}}/nescore/disksys.rom"
+    else
+        echo "Warning: $fdsbios not found (see roms/README.md) -- NesLostLevelsChallenge (FDS) won't boot without it this session" >&2
+    fi
+
+# Same shape as _deploy-nes above, staging the mupen64plus_next core +
+# roms/sm64.z64 into <dir>/n64core/ for mad2nesmod.dll's N64Sm64Challenge
+# effect (see mad2nesmod/src/nesmod.cpp). Best-effort, same "warn and
+# degrade" precedent.
+_deploy-n64 dir:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    mkdir -p "{{dir}}/n64core"
+    core="{{justfile_directory()}}/extern/.libretro-cores/mupen64plus_next_libretro.dll"
+    if [ -f "$core" ]; then
+        cp "$core" "{{dir}}/n64core/mupen64plus_next_libretro.dll"
+    else
+        echo "Warning: $core not found (run 'just fetch-libretro-mupen64plus' first) -- N64Sm64Challenge's core won't load this session" >&2
+    fi
+    rom="{{justfile_directory()}}/roms/sm64.z64"
+    if [ -f "$rom" ]; then
+        cp "$rom" "{{dir}}/n64core/sm64.z64"
+    else
+        echo "Warning: $rom not found (see roms/README.md) -- N64Sm64Challenge's ROM won't load this session" >&2
+    fi
+
 # Build and copy version.dll + mods/ into each game directory.
 deploy-mad2: build
     cmake --build {{build_dir}} --target deploy-mad2
+    just _deploy-nes mad2
+    just _deploy-n64 mad2
 
 deploy-mad2russia: build
     cmake --build {{build_dir}} --target deploy-mad2russia
+    just _deploy-nes mad2russia
+    just _deploy-n64 mad2russia
 
 deploy-mad2demo: build
     cmake --build {{build_dir}} --target deploy-mad2demo
+    just _deploy-nes mad2demo
+    just _deploy-n64 mad2demo
 
 # Resolve a working Proton path: use protonpath if it exists, else fall back
 # to the first GE-Proton*/Proton* found under any known Steam install
@@ -217,6 +281,53 @@ fetch-umu-run:
         | tar -x -C "{{build_dir}}" --strip-components=1 umu/umu-run
     chmod +x "{{build_dir}}/umu-run"
 
+# Fetches the official libretro buildbot's latest 32-bit Windows FCEUmm
+# core (fceumm_libretro.dll) -- mad2nesmod's NesChallenge effect
+# LoadLibraryA's this directly inside the Mad2 process (no RetroArch, no
+# separate frontend process -- see mad2nesmod/src/nesmod.cpp). 32-bit
+# because mad2 mods are themselves 32-bit (i686 MinGW) DLLs loaded into
+# Mad2.exe, a 32-bit process. Cached into a gitignored extern/ subdirectory
+# (same "fetch a prebuilt release once, reuse it" shape as fetch-umu-run/
+# build-music-windows's SDL3 fetch) since libretro cores have no versioned
+# releases, only a rolling "latest" nightly -- re-run this manually if you
+# want to pick up a newer core build.
+fetch-libretro-fceumm:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    core_dir="extern/.libretro-cores"
+    mkdir -p "$core_dir"
+    if [ -f "$core_dir/fceumm_libretro.dll" ]; then
+        exit 0
+    fi
+    echo "[just] Fetching FCEUmm libretro core (Windows x86)..."
+    mkdir -p "{{build_dir}}"
+    curl -sL "https://buildbot.libretro.com/nightly/windows/x86/latest/fceumm_libretro.dll.zip" -o "{{build_dir}}/fceumm_libretro.dll.zip"
+    unzip -o -q "{{build_dir}}/fceumm_libretro.dll.zip" -d "$core_dir"
+    rm -f "{{build_dir}}/fceumm_libretro.dll.zip"
+
+# Same shape as fetch-libretro-fceumm above, but for mupen64plus_next
+# (mupen64plus_next_libretro.dll) -- mad2nesmod's N64Sm64Challenge effect.
+# Windows builds of this core always compile in the Angrylion pure-software
+# RDP plugin (confirmed against the core's own Makefile: HAVE_THR_AL=1 is
+# set unconditionally in its "else" / Windows branch, not gated behind any
+# platform check) alongside the default GLideN64 (OpenGL) one -- nesmod.cpp
+# forces the core to use Angrylion via a core-options override so it never
+# tries to open a GL context this mod's D3D9-only hook can't provide. See
+# mad2nesmod/src/nesmod.cpp's file header for the full picture.
+fetch-libretro-mupen64plus:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    core_dir="extern/.libretro-cores"
+    mkdir -p "$core_dir"
+    if [ -f "$core_dir/mupen64plus_next_libretro.dll" ]; then
+        exit 0
+    fi
+    echo "[just] Fetching mupen64plus_next libretro core (Windows x86)..."
+    mkdir -p "{{build_dir}}"
+    curl -sL "https://buildbot.libretro.com/nightly/windows/x86/latest/mupen64plus_next_libretro.dll.zip" -o "{{build_dir}}/mupen64plus_next_libretro.dll.zip"
+    unzip -o -q "{{build_dir}}/mupen64plus_next_libretro.dll.zip" -d "$core_dir"
+    rm -f "{{build_dir}}/mupen64plus_next_libretro.dll.zip"
+
 # Build the native Linux music/podcast playback engine (mad2music/), used by
 # mad2relauncher (music.go) which runs it continuously for the whole play
 # session, and mad2podcastmod.dll (inside the Wine process) which triggers
@@ -227,6 +338,19 @@ build-music-linux:
     cmake --build mad2music/build
     mkdir -p "{{build_dir}}"
     cp mad2music/build/mad2music "{{build_dir}}/mad2music"
+
+# Build the offline patch-generation tool for mad2xdeltamod.dll's
+# *.mad2xdelta files (see mad2xdeltagen/src/main.cpp and
+# mad2xdeltamod/src/xdeltamod.cpp for the full picture): takes an original
+# and a modified IGZ section's decompressed bytes and produces a tiny
+# xdelta3/VCDIFF-based patch mad2xdeltamod applies at runtime, instead of
+# ever redistributing a whole patched .bld/.pak. Own host-native CMake
+# project, not part of the root MinGW cross-build.
+build-xdeltagen:
+    cmake -S mad2xdeltagen -B mad2xdeltagen/build -G Ninja -DCMAKE_MAKE_PROGRAM=samu
+    cmake --build mad2xdeltagen/build
+    mkdir -p "{{build_dir}}"
+    cp mad2xdeltagen/build/dist/mad2xdeltagen "{{build_dir}}/mad2xdeltagen"
 
 # Best-effort i686-w64-mingw32 cross-build of mad2music for native-Windows
 # Mad2 installs, where there is no mad2relauncher process to fork/supervise
@@ -410,16 +534,21 @@ build-buildgames:
 # build-it-yourself-whenever steps, not something Mad2 itself should ever
 # require to launch. _play degrades gracefully (warns, disables the
 # effect) if either hasn't been built yet -- see its own sm64_bin/jak1_dir
-# checks below.
+# checks below. NesChallenge/N64Sm64Challenge (both mad2nesmod.dll) are the
+# same story split in two: fetch-libretro-fceumm/fetch-libretro-mupen64plus's
+# cores ARE `run` dependencies below (freely redistributable, same as
+# umu-run -- see those recipes), but roms/smb1.nes and roms/sm64.z64
+# themselves are still user-supplied, opt-in drop-ins (see roms/README.md);
+# _deploy-nes/_deploy-n64 degrade gracefully if either is missing.
 
 # Build, deploy, and launch the base game.
-run: deploy-mad2 build-relauncher fetch-umu-run build-music-linux (_play "mad2" "Mad2.exe" "mad2")
+run: fetch-libretro-fceumm fetch-libretro-mupen64plus deploy-mad2 build-relauncher fetch-umu-run build-music-linux (_play "mad2" "Mad2.exe" "mad2")
 
 # Build, deploy, and launch the Russian localization install.
-run-mad2russia: deploy-mad2russia build-relauncher fetch-umu-run build-music-linux (_play "mad2russia" "Mad2.exe" "mad2")
+run-mad2russia: fetch-libretro-fceumm fetch-libretro-mupen64plus deploy-mad2russia build-relauncher fetch-umu-run build-music-linux (_play "mad2russia" "Mad2.exe" "mad2")
 
 # Build, deploy, and launch the demo install.
-run-mad2demo: deploy-mad2demo build-relauncher fetch-umu-run build-music-linux (_play "mad2demo" "Mad2Demo.exe" "mad2")
+run-mad2demo: fetch-libretro-fceumm fetch-libretro-mupen64plus deploy-mad2demo build-relauncher fetch-umu-run build-music-linux (_play "mad2demo" "Mad2Demo.exe" "mad2")
 
 regedit: (_regedit "mad2" "mad2")
 regedit-mad2russia: (_regedit "mad2russia" "mad2")

@@ -25,9 +25,9 @@
 //     real width can legitimately disagree).
 //   - The pixel format, for every sample in this repo's checked-out asset
 //     corpus: standard DXT1 (0.5 bytes/pixel — 171/186 samples) or standard
-//     DXT3 (1.0 bytes/pixel — 15/186 samples, all small UI icons), with
-//     standard row-major block layout, base (largest) mip first. See
-//     "Pixel format" below for the full evidentiary trail.
+//     DXT5 (1.0 bytes/pixel — 15/186 samples, all small UI icons), with
+//     standard row-major block layout, smallest mip first (base level at the end of Section 2).
+//     See "Pixel format" below for the full evidentiary trail.
 //
 // Still NOT solved: which literal `igMetaImage_*` singleton (e.g.
 // "dxt1_dx" vs "dxt1") a given texture's `format` field is meant to point
@@ -217,6 +217,7 @@ const (
 	FormatUnknown PixelFormat = iota
 	FormatDXT1                // 8 bytes/4x4 block, 0.5 bytes/pixel
 	FormatDXT3                // 16 bytes/4x4 block (8 explicit-alpha + 8 color), 1.0 bytes/pixel
+	FormatDXT5                // 16 bytes/4x4 block (8 interpolated-alpha + 8 color), 1.0 bytes/pixel
 )
 
 func (f PixelFormat) String() string {
@@ -225,6 +226,8 @@ func (f PixelFormat) String() string {
 		return "DXT1"
 	case FormatDXT3:
 		return "DXT3"
+	case FormatDXT5:
+		return "DXT5"
 	default:
 		return "unknown"
 	}
@@ -236,7 +239,7 @@ func (f PixelFormat) blockBytes() int {
 	switch f {
 	case FormatDXT1:
 		return 8
-	case FormatDXT3:
+	case FormatDXT3, FormatDXT5:
 		return 16
 	default:
 		return 0
@@ -451,7 +454,7 @@ func DetectPixelFormat(width, height, levelCount, sec2Size int) PixelFormat {
 	case abs64(bpp-0.5) < eps:
 		return FormatDXT1
 	case abs64(bpp-1.0) < eps:
-		return FormatDXT3
+		return FormatDXT5
 	default:
 		return FormatUnknown
 	}
@@ -551,10 +554,10 @@ func looksLikeAssetPath(s string) bool {
 
 // --- Pixel decode/encode ---------------------------------------------------
 //
-// Standard DXT1/DXT3 block compression (S3TC), row-major block layout
+// Standard DXT1/DXT5 block compression (S3TC), row-major block layout
 // (blocks left-to-right within a block-row, block-rows top-to-bottom),
-// applied only to mip level 0 (the base/largest level, which is always
-// Section 2's first bytes — see baseLevelSize). Confirmed via spatial
+// applied only to mip level 0 (the base/largest level, which sits at
+// the end of Section 2 — mips are ordered smallest-to-largest; see baseLevelSize). Confirmed via spatial
 // autocorrelation on real samples (not just "doesn't crash" — see
 // docs/TEXTURE_FORMAT.md's "Pixel format and layout, confirmed" section for
 // the concrete numbers): decoding a real DXT1 loadscreen sample's block
@@ -597,9 +600,9 @@ func rgb888to565(r, g, b uint8) uint16 {
 // transparent black" mode, since alpha is carried by the separate alpha
 // block instead.
 func decodeDXTColorBlock(block []byte, forceFourColor bool) [16][3]uint8 {
-	c0 := binary.LittleEndian.Uint16(block[0:2])
-	c1 := binary.LittleEndian.Uint16(block[2:4])
-	idx := binary.LittleEndian.Uint32(block[4:8])
+	idx := binary.LittleEndian.Uint32(block[0:4])
+	c0 := binary.LittleEndian.Uint16(block[4:6])
+	c1 := binary.LittleEndian.Uint16(block[6:8])
 
 	r0, g0, b0 := rgb565to888(c0)
 	r1, g1, b1 := rgb565to888(c1)
@@ -628,18 +631,22 @@ func decodeDXTColorBlock(block []byte, forceFourColor bool) [16][3]uint8 {
 // (color0<=color1 as unsigned u16 selects 3 opaque colors + transparent
 // black for palette index 3).
 func decodeDXT1Block(block []byte) [16]color.NRGBA {
-	c0 := binary.LittleEndian.Uint16(block[0:2])
-	c1 := binary.LittleEndian.Uint16(block[2:4])
-	rgb := decodeDXTColorBlock(block, false)
-	idx := binary.LittleEndian.Uint32(block[4:8])
+	idx := binary.LittleEndian.Uint32(block[0:4])
+	c0 := binary.LittleEndian.Uint16(block[4:6])
+	c1 := binary.LittleEndian.Uint16(block[6:8])
+
+	r0, g0, b0 := rgb565to888(c0)
+	r1, g1, b1 := rgb565to888(c1)
+	var palette [4][3]uint8
+	palette[0] = [3]uint8{r0, g0, b0}
+	palette[1] = [3]uint8{r1, g1, b1}
+	palette[2] = [3]uint8{uint8((2*int(r0) + int(r1)) / 3), uint8((2*int(g0) + int(g1)) / 3), uint8((2*int(b0) + int(b1)) / 3)}
+	palette[3] = [3]uint8{uint8((int(r0) + 2*int(r1)) / 3), uint8((int(g0) + 2*int(g1)) / 3), uint8((int(b0) + 2*int(b1)) / 3)}
+
 	var out [16]color.NRGBA
 	for i := 0; i < 16; i++ {
 		code := (idx >> uint(2*i)) & 3
-		a := uint8(255)
-		if code == 3 && c0 <= c1 {
-			a = 0
-		}
-		out[i] = color.NRGBA{R: rgb[i][0], G: rgb[i][1], B: rgb[i][2], A: a}
+		out[i] = color.NRGBA{R: palette[code][0], G: palette[code][1], B: palette[code][2], A: 255}
 	}
 	return out
 }
@@ -659,8 +666,62 @@ func decodeDXT3Block(block []byte) [16]color.NRGBA {
 	return out
 }
 
+// decodeDXT5Block decodes one 16-byte DXT5 block (8 bytes interpolated
+// alpha + 8 bytes DXT1 color block) to 16 RGBA pixels.
+func decodeDXT5Block(block []byte) [16]color.NRGBA {
+	a0 := block[0]
+	a1 := block[1]
+	aIdx := uint64(block[2]) | uint64(block[3])<<8 | uint64(block[4])<<16 | uint64(block[5])<<24 | uint64(block[6])<<32 | uint64(block[7])<<40
+
+	var alphaPalette [8]uint8
+	alphaPalette[0] = a0
+	alphaPalette[1] = a1
+	if a0 > a1 {
+		for i := 1; i <= 6; i++ {
+			alphaPalette[i+1] = uint8(((7-i)*int(a0) + i*int(a1)) / 7)
+		}
+	} else {
+		for i := 1; i <= 4; i++ {
+			alphaPalette[i+1] = uint8(((5-i)*int(a0) + i*int(a1)) / 5)
+		}
+		alphaPalette[6] = 0
+		alphaPalette[7] = 255
+	}
+
+	c0 := binary.LittleEndian.Uint16(block[8:10])
+	c1 := binary.LittleEndian.Uint16(block[10:12])
+	idx := binary.LittleEndian.Uint32(block[12:16])
+
+	r0, g0, b0 := rgb565to888(c0)
+	r1, g1, b1 := rgb565to888(c1)
+	var palette [4][3]uint8
+	palette[0] = [3]uint8{r0, g0, b0}
+	palette[1] = [3]uint8{r1, g1, b1}
+	palette[2] = [3]uint8{uint8((2*int(r0) + int(r1)) / 3), uint8((2*int(g0) + int(g1)) / 3), uint8((2*int(b0) + int(b1)) / 3)}
+	palette[3] = [3]uint8{uint8((int(r0) + 2*int(r1)) / 3), uint8((int(g0) + 2*int(g1)) / 3), uint8((int(b0) + 2*int(b1)) / 3)}
+
+	var out [16]color.NRGBA
+	for i := 0; i < 16; i++ {
+		code := (idx >> uint(2*i)) & 3
+		acode := (aIdx >> uint(3*i)) & 7
+		a := alphaPalette[acode]
+		out[i] = color.NRGBA{R: palette[code][0], G: palette[code][1], B: palette[code][2], A: a}
+	}
+	return out
+}
+
 // decodeBaseLevel decodes mip level 0 (width x height, standard DXT block
 // grid, row-major blocks) to an *image.NRGBA.
+//
+// Block ROWS are stored bottom-to-top (targetBY = blocksH-1-by), but each
+// individual 4x4 block's own 4 texel rows are stored top-to-bottom already
+// in their final orientation (py, not 3-py) — NOT a true whole-image
+// vertical mirror, despite looking like it should be one. Confirmed by
+// direct comparison: applying the "obvious" full mirror (also reversing
+// each block's internal row order) produces a checkerboard-like scramble on
+// every sharp edge (border lines, tree-canopy silhouettes) while leaving
+// smooth gradients deceptively plausible-looking — this is why an earlier
+// pass called DXT1 decode "solid, done" despite the bug being real.
 func decodeBaseLevel(data []byte, width, height int, format PixelFormat) (*image.NRGBA, error) {
 	bb := format.blockBytes()
 	if bb == 0 {
@@ -676,6 +737,7 @@ func decodeBaseLevel(data []byte, width, height int, format PixelFormat) (*image
 	img := image.NewNRGBA(image.Rect(0, 0, width, height))
 	pos := 0
 	for by := 0; by < blocksH; by++ {
+		targetBY := blocksH - 1 - by
 		for bx := 0; bx < blocksW; bx++ {
 			block := data[pos : pos+bb]
 			pos += bb
@@ -685,10 +747,12 @@ func decodeBaseLevel(data []byte, width, height int, format PixelFormat) (*image
 				px = decodeDXT1Block(block)
 			case FormatDXT3:
 				px = decodeDXT3Block(block)
+			case FormatDXT5:
+				px = decodeDXT5Block(block)
 			}
 			for i := 0; i < 16; i++ {
 				py, pxx := i/4, i%4
-				y, x := by*4+py, bx*4+pxx
+				y, x := targetBY*4+py, bx*4+pxx
 				if x < width && y < height {
 					img.SetNRGBA(x, y, px[i])
 				}
@@ -710,9 +774,18 @@ func DecodeImage(info *TexsInfo) (image.Image, error) {
 		return nil, fmt.Errorf("could not determine texture dimensions (width=%d height=%d)", info.Width, info.Height)
 	}
 	if info.Format == FormatUnknown {
-		return nil, fmt.Errorf("could not determine pixel format (section 2 size %d doesn't cleanly match DXT1 or DXT3 for a %dx%d, %d-level mip chain)", info.Sec2Size, info.Width, info.Height, info.LevelCount+1)
+		return nil, fmt.Errorf("could not determine pixel format (section 2 size %d doesn't cleanly match DXT1 or DXT5 for a %dx%d, %d-level mip chain)", info.Sec2Size, info.Width, info.Height, info.LevelCount+1)
 	}
-	return decodeBaseLevel(info.PixelData, info.Width, info.Height, info.Format)
+	need := baseLevelSize(info.Width, info.Height, info.Format)
+	if len(info.PixelData) < need {
+		return nil, fmt.Errorf("pixel data too small (%d bytes) for %dx%d base level (%d bytes required)", len(info.PixelData), info.Width, info.Height, need)
+	}
+	baseOffset := 0
+	if info.Format == FormatDXT5 {
+		// DXT5 mips stored smallest-to-largest (base level at end of Section 2)
+		baseOffset = len(info.PixelData) - need
+	}
+	return decodeBaseLevel(info.PixelData[baseOffset:], info.Width, info.Height, info.Format)
 }
 
 // DecodeTexs is a convenience wrapper: parses raw `.texs` bytes and decodes
@@ -817,9 +890,9 @@ func encodeDXTColorBlock(px [16][3]uint8, forceFourColor bool) []byte {
 		idx |= uint32(best) << uint(2*i)
 	}
 	out := make([]byte, 8)
-	binary.LittleEndian.PutUint16(out[0:2], c0)
-	binary.LittleEndian.PutUint16(out[2:4], c1)
-	binary.LittleEndian.PutUint32(out[4:8], idx)
+	binary.LittleEndian.PutUint32(out[0:4], idx)
+	binary.LittleEndian.PutUint16(out[4:6], c0)
+	binary.LittleEndian.PutUint16(out[6:8], c1)
 	return out
 }
 
@@ -909,9 +982,9 @@ func encodeDXT1Block(px [16]color.NRGBA) []byte {
 		idx |= uint32(best) << uint(2*i)
 	}
 	out := make([]byte, 8)
-	binary.LittleEndian.PutUint16(out[0:2], c0)
-	binary.LittleEndian.PutUint16(out[2:4], c1)
-	binary.LittleEndian.PutUint32(out[4:8], idx)
+	binary.LittleEndian.PutUint32(out[0:4], idx)
+	binary.LittleEndian.PutUint16(out[4:6], c0)
+	binary.LittleEndian.PutUint16(out[6:8], c1)
 	return out
 }
 
@@ -932,6 +1005,69 @@ func encodeDXT3Block(px [16]color.NRGBA) []byte {
 	return out
 }
 
+// encodeDXT5Block encodes one 4x4 block to 16 DXT5 bytes: 8 bytes of
+// interpolated 8-bit alpha, then an always-4-color DXT1-shaped color block.
+func encodeDXT5Block(px [16]color.NRGBA) []byte {
+	var minA, maxA uint8 = 255, 0
+	for _, p := range px {
+		if p.A < minA {
+			minA = p.A
+		}
+		if p.A > maxA {
+			maxA = p.A
+		}
+	}
+	a0, a1 := maxA, minA
+	if a0 == a1 {
+		if a0 < 255 {
+			a0++
+		} else if a1 > 0 {
+			a1--
+		}
+	}
+	if a0 <= a1 {
+		a0, a1 = a1, a0
+	}
+	var alphaPalette [8]int
+	alphaPalette[0] = int(a0)
+	alphaPalette[1] = int(a1)
+	for i := 1; i <= 6; i++ {
+		alphaPalette[i+1] = ((7-i)*int(a0) + i*int(a1)) / 7
+	}
+
+	var aIdx uint64
+	for i, p := range px {
+		best, bestDist := 0, 1<<30
+		for ci, c := range alphaPalette {
+			d := int(p.A) - c
+			if d < 0 {
+				d = -d
+			}
+			if d < bestDist {
+				bestDist, best = d, ci
+			}
+		}
+		aIdx |= uint64(best) << uint(3*i)
+	}
+
+	var rgb [16][3]uint8
+	for i, p := range px {
+		rgb[i] = [3]uint8{p.R, p.G, p.B}
+	}
+
+	out := make([]byte, 16)
+	out[0] = a0
+	out[1] = a1
+	out[2] = byte(aIdx)
+	out[3] = byte(aIdx >> 8)
+	out[4] = byte(aIdx >> 16)
+	out[5] = byte(aIdx >> 24)
+	out[6] = byte(aIdx >> 32)
+	out[7] = byte(aIdx >> 40)
+	copy(out[8:16], encodeDXTColorBlock(rgb, true))
+	return out
+}
+
 // encodeBaseLevel encodes img's pixels to a base-mip-level byte blob in the
 // given format, matching baseLevelSize's byte count exactly.
 func encodeBaseLevel(img image.Image, width, height int, format PixelFormat) ([]byte, error) {
@@ -944,11 +1080,12 @@ func encodeBaseLevel(img image.Image, width, height int, format PixelFormat) ([]
 	blocksH := (height + 3) / 4
 	out := make([]byte, 0, blocksW*blocksH*bb)
 	for by := 0; by < blocksH; by++ {
+		targetBY := blocksH - 1 - by
 		for bx := 0; bx < blocksW; bx++ {
 			var px [16]color.NRGBA
 			for i := 0; i < 16; i++ {
 				py, pxx := i/4, i%4
-				r, g, b, a := colorAt(img, bounds, bx*4+pxx, by*4+py)
+				r, g, b, a := colorAt(img, bounds, bx*4+pxx, targetBY*4+py)
 				px[i] = color.NRGBA{R: r, G: g, B: b, A: a}
 			}
 			var block []byte
@@ -957,6 +1094,8 @@ func encodeBaseLevel(img image.Image, width, height int, format PixelFormat) ([]
 				block = encodeDXT1Block(px)
 			case FormatDXT3:
 				block = encodeDXT3Block(px)
+			case FormatDXT5:
+				block = encodeDXT5Block(px)
 			}
 			out = append(out, block...)
 		}
@@ -1012,12 +1151,16 @@ func EncodeInsert(origData []byte, img image.Image) ([]byte, error) {
 	if oldBaseSize != len(newBase) {
 		return nil, fmt.Errorf("internal error: encoded base level is %d bytes, expected %d", len(newBase), oldBaseSize)
 	}
-	if int(info.Sec2Off)+oldBaseSize > len(origData) {
-		return nil, fmt.Errorf("original file too small: base level would extend past EOF")
+	if int(info.Sec2Size) < oldBaseSize || int(info.Sec2Off)+int(info.Sec2Size) > len(origData) {
+		return nil, fmt.Errorf("original file too small: section 2 size (%d) less than base level (%d)", info.Sec2Size, oldBaseSize)
 	}
 
 	out := make([]byte, len(origData))
 	copy(out, origData)
-	copy(out[info.Sec2Off:info.Sec2Off+uint32(oldBaseSize)], newBase)
+	baseOff := info.Sec2Off
+	if info.Format == FormatDXT5 {
+		baseOff = info.Sec2Off + info.Sec2Size - uint32(oldBaseSize)
+	}
+	copy(out[baseOff:baseOff+uint32(oldBaseSize)], newBase)
 	return out, nil
 }

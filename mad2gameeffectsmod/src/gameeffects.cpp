@@ -55,6 +55,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 #include <ctime>
 #include <fstream>
 #include <string>
@@ -436,7 +437,10 @@ static DWORD WINAPI ForceTeleportThreadFunc(LPVOID param) {
 
 static void WINAPI ApplyPlayerTeleport(void*) {
     UpdateCurrentLevel();
-    if (g_CurrentLevel == "None" || g_CurrentLevel == "title") {
+    // Case-insensitive: the real level-redirect-tracked title-screen
+    // archive name is "TITLE" (all caps), confirmed live via
+    // logs\mad2.log -- see mad2cheatapply's identical fix for the same bug.
+    if (g_CurrentLevel == "None" || _stricmp(g_CurrentLevel.c_str(), "title") == 0) {
         char reason[96];
         snprintf(reason, sizeof(reason), "no active level (current='%s')", g_CurrentLevel.c_str());
         SkipEffect("PlayerTeleport", reason);

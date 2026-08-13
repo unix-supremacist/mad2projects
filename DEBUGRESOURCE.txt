@@ -1,0 +1,102 @@
+In November 2019, me and my friend ‪@ImJustATester‬ were trying to figure out the cheat combinations of Madagascar 2. While messing with the game, he managed to access the "Debug Options"; he uploaded a video showcasing it here:    • [PS2] Madagascar: Escape 2 Africa - Debug ...
+But the cheat combinations were still unknown, and only 3 of them were online ("Infinite Sprint", "Minigolf - Ball Stop" and "Invulnerability - Alex" from this german site https://www.mogelpower.de/cheats/Mada... ).
+On the 23rd of July 2023, I discovered the combinations of the remaining cheat codes.
+I'm specifically playing on the PS2 version, NTSC. The codes have also been tried on the Wii and PC versions, which include some differences from the PS2 release (listed below).
+
+There're 18 cheat codes in total, but some of them don't have any sequence (the input values are filled with 0xFFFFFFFF, but manually creating the sequence will make them inputtable, as shown in the video). Only for the PS2 and Wii version the "Unlock Levels" cheat code has a sequence, and only for the Wii and PC version the "Giant Frogs" cheat code has a sequence.
+
+Legend:
+0 - Flower (Red Flower)
+1 - Giraffe (Melman)
+2 - Hippo (Gloria)
+3 - Leaf
+4 - Lion (Alex)
+5 - Monkey
+6 - Pawprint
+7 - Penguin (Skipper)
+8 - Zebra (Marty)
+9 - Pink (Pink Flower)
+10 - Lady (Hula Girl)
+
+1) Lady Hippo Hippo Flower Penguin Pawprint Pink Lady - Fast Mangoes
+2) Lion Lion Leaf Giraffe Pawprint Pawprint Lady Flower - Invulnerability - Alex
+3) Hippo Hippo Flower Leaf Pink Lady Monkey Hippo - Invulnerability - Gloria
+4) Flower Penguin Flower Leaf Lady Lady Pink Monkey - Peppers at Will
+5) Zebra Pawprint Zebra Lady Hippo Penguin Giraffe Zebra - Swim Backwards
+6) Giraffe Leaf Giraffe Giraffe Pawprint Monkey Lady Lady - Minigolf - Ball Stop
+7) Penguin Pawprint Monkey Monkey Flower Leaf Flower Zebra - Secret Golf Hole
+8) Pink Penguin Pawprint Monkey Zebra Giraffe Hippo Leaf - Invisible New York Pals
+9) Zebra Zebra Pawprint Leaf Flower Flower Pawprint Pink - Invulnerability - Marty
+10) Zebra Zebra Leaf Leaf Flower Leaf Flower Leaf - Infinite Sprint
+11) Lady Lion Penguin Giraffe Leaf Zebra Pink Flower - Unlock Levels (PS2/Wii only)
+12) No sequence - Super Mangoes
+13) No sequence - Gloria Super - Buttbounce
+14) No sequence - DEBUG OPTIONS ENABLED
+15) Leaf Leaf Flower Pink Monkey Pawprint Giraffe Zebra - Giant Frogs (Wii/PC only)
+16) No sequence - A Head of the Game
+17) No sequence - Penguin Projectile
+18) No sequence - Buddy Pointer
+
+Technical:
+NOTE: The addresses change every time the Cheats menu is accessed. I couldn't find any pointers that worked to always get to this region.
+
+A cheat code sequence is composed of 8 inputs, and for each sequence the game stores 8 pointers to the 8 inputs' structs.
+https://i.gyazo.com/232a0edfe6c4de947...
+
+Each input struct is composed of 0x38 bytes, in which the field at +0x24 is the ID of an input (0 to 10 from the list above).
+The pointers are ordered in a forward-manner, but the structs are one before the other, so they go in "reverse".
+For example, the Infinite Sprint cheat code is "8 8 3 3 0 3 0 3", and this is how its sequence is stored in memory:
+https://cdn.discordapp.com/attachment...
+
+A locked cheat has a value of 0, a disabled cheat has a value of 1 and an enabled cheat has a value of 2.
+1) 20CCD4C0 - Fast Mangoes
+2) 20CCD59C - Invulnerability - Alex
+3) 20CCD5C8 - Invulnerability - Gloria
+4) 20CCD544 - Peppers at Will
+5) 20CCD570 - Swim Backwards
+6) 20CCE388 - Minigolf - Ball Stop
+7) 20CCE2AC - Secret Golf Hole
+8) 20CCD620 - Invisible New York Pals
+9) 20CCD5F4 - Invulnerability - Marty
+10) 20CCD3B8 - Infinite Sprint
+11) 20CCD410 - Unlock Levels
+12) 20CCD360 - Super Mangoes
+13) 20CCD518 - Gloria Super - Buttbounce
+14) 20CCD494 - DEBUG OPTIONS ENABLED
+15) 20CCD4EC - Giant Frogs
+16) 20CCD38C - A Head of the Game
+17) 20CCD3E4 - Penguin Projectile
+18) 20CCD468 - Buddy Pointer
+
+[PS2] Madagascar: Escape 2 Africa - Debug Options
+
+Address: 20CCF534
+Value: 2
+
+
+@unixsupremacist5461
+7 months ago
+towards the end of the video you show a debug menu not enabled by the cheat, do you have any rough idea of how you found the address for that, or a offset from any of the cheats, ive managed to reproduce everything else in the video on other versions of the game except that
+
+
+
+Reply
+
+
+@ImJustATester
+7 months ago
+While in-game, pause the game and open the options menu.
+
+Change the value of 20DDC2C8 to 00CC9674 (Hex).
+Change the value of 20DD85B8 to 0.
+
+Nothing will change visually, but if you press X on "Sound" it's gonna open that menu.
+
+
+
+Reply
+
+
+@unixsupremacist5461
+6 months ago
+ @ImJustATester  gonna try in a bit need to get pcsx2 reinstalled, how did you find this?

@@ -26,7 +26,11 @@ func LaunchGame(inst Install, s InstallSettings) ([]string, error) {
 	if runtime.GOOS == "windows" {
 		cmd := exec.Command(filepath.Join(inst.Dir, inst.Exe))
 		cmd.Dir = inst.Dir
-		return nil, cmd.Start()
+		if err := cmd.Start(); err != nil {
+			return nil, err
+		}
+		go cmd.Wait() // reap on exit -- see launchLinux's own cmd.Start() for why this matters
+		return nil, nil
 	}
 	return launchLinux(inst, s)
 }
@@ -113,7 +117,46 @@ func launchLinux(inst Install, s InstallSettings) ([]string, error) {
 		"WINEDLLOVERRIDES=version=n,b",
 		"SDL_VIDEODRIVER=x11",
 	)
-	return warnings, cmd.Start()
+	// Otherwise silently discarded (Go routes an unset Stdout/Stderr to
+	// /dev/null) -- captures gamescope/umu-run/Wine's own output, notably
+	// Wine's built-in unhandled-exception backtrace on a crash, which
+	// mad2sharedlog's own logs\mad2.log can never see (that log only gets
+	// what a mod explicitly writes before it dies, not what killed it).
+	logFile, logErr := os.Create(filepath.Join(inst.Dir, "launcher_gamescope_stdio.log"))
+	if logErr == nil {
+		cmd.Stdout = logFile
+		cmd.Stderr = logFile
+	} else {
+		warnings = append(warnings, fmt.Sprintf("could not create launcher_gamescope_stdio.log: %v", logErr))
+	}
+	if err := cmd.Start(); err != nil {
+		if logFile != nil {
+			logFile.Close()
+		}
+		return warnings, err
+	}
+	// Reap on exit: exec.Cmd.Start() leaves the child as a zombie forever
+	// once it exits unless something eventually calls Wait() on it (Go's
+	// os/exec docs: Wait "releases any resources associated with the Cmd").
+	// This launcher never otherwise inspects gamescope's exit status, so a
+	// bare fire-and-forget goroutine is enough -- but it has to exist. Found
+	// live: ~40 defunct gamescope processes had piled up under this exact
+	// mad2launcher process across days of testing, one per launch, back to
+	// whenever this bug was introduced, because nothing here ever called
+	// Wait() at all. A zombie can't be killed by any signal (it's already
+	// dead -- only its exit status is unclaimed); the only ways to clear an
+	// already-existing pile are this process reaping them (which a launch
+	// AFTER this fix will do for future ones, but not retroactively for
+	// ones orphaned before it existed) or restarting mad2launcher itself
+	// (its zombie children get reparented to PID 1, which reaps orphans
+	// automatically).
+	go func() {
+		cmd.Wait()
+		if logFile != nil {
+			logFile.Close()
+		}
+	}()
+	return warnings, nil
 }
 
 // buildInnerLaunchCommand resolves what gamescope should run inside itself,

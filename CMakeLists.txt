@@ -52,6 +52,11 @@ add_subdirectory(mad2config)
 # (mad2/mods/mad2effects.dll) -- see mad2effects/include/mad2effects_api.h.
 add_subdirectory(mad2effects)
 
+# Shared live-settings registry other mods build against
+# (mad2/mods/mad2settings.dll) -- see mad2settings/include/mad2settings_api.h.
+# mad2debugmenu.dll is the only consumer that renders/edits these.
+add_subdirectory(mad2settings)
+
 # IGT/RTA/Playtime timer overlay (mad2/mods/igttimer.dll).
 add_subdirectory(mad2igttimer)
 
@@ -109,15 +114,74 @@ add_subdirectory(mad2gameeffectsmod)
 # mod's name has to keep sorting after "mad2assetloader".
 add_subdirectory(mad2levelredirectmod)
 
-# Title-screen cheat-apply mod (mad2/mods/mad2cheatapply.dll) -- ported from
-# ../mad2mod's enable_all_cheats/load_cheats_config, see
-# mad2cheatapply/src/cheatapply.cpp for the pointer chain and cheat table.
-add_subdirectory(mad2cheatapply)
-
 # Diagnostic runtime logger for VolcanoRave's rhythm minigame's TFBScript
 # execution (mad2/mods/mad2rhythmlogger.dll) -- NOT a gameplay mod, see
 # mad2rhythmlogger/src/rhythmlogger.cpp and docs/SCRIPT_FORMAT.md.
 add_subdirectory(mad2rhythmlogger)
+
+# Diagnostic runtime memory-dump probe for the climb-ability reverse-
+# engineering effort (mad2/mods/mad2climbprobe.dll) -- NOT a gameplay mod,
+# same status as mad2rhythmlogger above. See mad2climbprobe/src/climbprobe.cpp.
+add_subdirectory(mad2climbprobe)
+
+# Diagnostic runtime reflection-metadata dumper (mad2/mods/mad2metadumper.dll)
+# -- NOT a gameplay mod, same status as mad2climbprobe/mad2rhythmlogger
+# above. See mad2metadumper/src/metadumper.cpp.
+add_subdirectory(mad2metadumper)
+
+# Diagnostic runtime logger for the Duty Free shop's item-list/membership
+# logic (mad2/mods/mad2shoptrace.dll) -- NOT a gameplay mod, same status as
+# mad2rhythmlogger/mad2climbprobe/mad2metadumper above. See
+# mad2shoptrace/src/shoptrace.cpp.
+add_subdirectory(mad2shoptrace)
+
+# Diagnostic runtime probe for the "switch playable character at any time"
+# feasibility question (mad2/mods/mad2characterswitchprobe.dll) -- NOT a
+# gameplay mod, same status as mad2rhythmlogger/mad2climbprobe/
+# mad2metadumper/mad2shoptrace above. See
+# mad2characterswitchprobe/src/characterswitchprobe.cpp.
+add_subdirectory(mad2characterswitchprobe)
+
+# NES chaos effect (mad2/mods/mad2nesmod.dll) -- dlopens a vendored
+# libretro core directly inside the Mad2 process, see
+# mad2nesmod/src/nesmod.cpp. Core binary + ROM are fetched/staged
+# separately (not CMake build outputs) -- see `just fetch-libretro-fceumm`
+# and add_deploy_target()'s own copy commands below.
+add_subdirectory(mad2nesmod)
+
+# In-process xdelta patch applier for .pak string-table edits
+# (mad2/mods/mad2xdeltamod.dll) -- applies <exe dir>/xdelta_patches/*.mad2xdelta
+# to a loaded .pak's decompressed IGZ section bytes in memory, so mods can
+# ship a few-KB binary diff instead of a whole patched .bld. Depends on
+# aa_mad2hookutil.dll's InstallInlineHook. See mad2xdeltamod/src/xdeltamod.cpp
+# and the offline patch-generation tool, mad2xdeltagen/ (a separate, native
+# Linux CMake project -- not built by this one, see its own CMakeLists.txt).
+add_subdirectory(mad2xdeltamod)
+
+# Minigame-mode fix (mad2/mods/mad2minigamemodefix.dll) -- forces the
+# game's own "Minigame Launch Mode" flag off on every level except a small
+# whitelist of real minigames confirmed to need it, fixing DrMelmen/
+# VolcanoRave and other story levels that merely reference shared minigame
+# code always acting like a minigame. See src/minigamemodefix.cpp for the
+# full investigation writeup and the live-object scan it's built on.
+add_subdirectory(mad2minigamemodefix)
+
+# In-game Nuklear debug menu (mad2/mods/aab_mad2debugmenu.dll -- see its own
+# CMakeLists.txt for why the "aab_" prefix is load-bearing, not cosmetic).
+# Renders/edits mad2settings.dll's registry and mad2effects.dll's/
+# mad2achievements.dll's registries -- see src/debugmenu.cpp.
+add_subdirectory(mad2debugmenu)
+
+# Achievement registry + config.cfg-backed persistence + unlock-toast
+# overlay (mad2/mods/mad2achievements.dll) -- see
+# mad2achievements/include/mad2achievements_api.h.
+add_subdirectory(mad2achievements)
+
+# Achievement detection driver (mad2/mods/mad2achievementtracker.dll) --
+# registers/unlocks achievements with mad2achievements.dll by watching real
+# game state (first entry: "BeatTheGame" on the Dam_Busters -> Credits
+# transition). See src/achievementtracker.cpp.
+add_subdirectory(mad2achievementtracker)
 
 # Defines a `deploy-<name>` target that copies version.dll + mods/*.dll into
 # `dir`. Used for each game install (mad2, mad2russia, mad2demo) so the same
@@ -150,9 +214,19 @@ function(add_deploy_target name dir)
         COMMAND ${CMAKE_COMMAND} -E copy "$<TARGET_FILE:mad2gameeffectsmod>" "${dir}/mods/mad2gameeffectsmod.dll"
         COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_CURRENT_SOURCE_DIR}/mad2gameeffectsmod/data/coordinates.yaml" "${dir}/coordinates.yaml"
         COMMAND ${CMAKE_COMMAND} -E copy "$<TARGET_FILE:mad2levelredirectmod>" "${dir}/mods/mad2levelredirectmod.dll"
-        COMMAND ${CMAKE_COMMAND} -E copy "$<TARGET_FILE:mad2cheatapply>" "${dir}/mods/mad2cheatapply.dll"
         COMMAND ${CMAKE_COMMAND} -E copy "$<TARGET_FILE:mad2rhythmlogger>" "${dir}/mods/mad2rhythmlogger.dll"
-        DEPENDS mad2modloader mad2hookutil mad2textrenderer shadowfix mad2assetloader mad2saveloader mad2xinput mad2config igttimer playercoords inputdisplay twitchchat mad2effects mad2inputeffectsmod mad2graphicseffectmod mad2mirrormod mad2chaosmod mad2effectshud mad2twitchcontrolsmod mad2companionmod mad2podcastmod mad2musichud mad2gameeffectsmod mad2levelredirectmod mad2cheatapply mad2rhythmlogger
+        COMMAND ${CMAKE_COMMAND} -E copy "$<TARGET_FILE:mad2climbprobe>" "${dir}/mods/mad2climbprobe.dll"
+        COMMAND ${CMAKE_COMMAND} -E copy "$<TARGET_FILE:mad2metadumper>" "${dir}/mods/mad2metadumper.dll"
+        COMMAND ${CMAKE_COMMAND} -E copy "$<TARGET_FILE:mad2shoptrace>" "${dir}/mods/mad2shoptrace.dll"
+        COMMAND ${CMAKE_COMMAND} -E copy "$<TARGET_FILE:mad2xdeltamod>" "${dir}/mods/mad2xdeltamod.dll"
+        COMMAND ${CMAKE_COMMAND} -E copy "$<TARGET_FILE:mad2nesmod>" "${dir}/mods/mad2nesmod.dll"
+        COMMAND ${CMAKE_COMMAND} -E copy "$<TARGET_FILE:mad2minigamemodefix>" "${dir}/mods/mad2minigamemodefix.dll"
+        COMMAND ${CMAKE_COMMAND} -E copy "$<TARGET_FILE:mad2characterswitchprobe>" "${dir}/mods/mad2characterswitchprobe.dll"
+        COMMAND ${CMAKE_COMMAND} -E copy "$<TARGET_FILE:mad2settings>" "${dir}/mods/mad2settings.dll"
+        COMMAND ${CMAKE_COMMAND} -E copy "$<TARGET_FILE:mad2debugmenu>" "${dir}/mods/aab_mad2debugmenu.dll"
+        COMMAND ${CMAKE_COMMAND} -E copy "$<TARGET_FILE:mad2achievements>" "${dir}/mods/mad2achievements.dll"
+        COMMAND ${CMAKE_COMMAND} -E copy "$<TARGET_FILE:mad2achievementtracker>" "${dir}/mods/mad2achievementtracker.dll"
+        DEPENDS mad2modloader mad2hookutil mad2textrenderer shadowfix mad2assetloader mad2saveloader mad2xinput mad2config igttimer playercoords inputdisplay twitchchat mad2effects mad2inputeffectsmod mad2graphicseffectmod mad2mirrormod mad2chaosmod mad2effectshud mad2twitchcontrolsmod mad2companionmod mad2podcastmod mad2musichud mad2gameeffectsmod mad2levelredirectmod mad2rhythmlogger mad2climbprobe mad2metadumper mad2shoptrace mad2xdeltamod mad2nesmod mad2minigamemodefix mad2characterswitchprobe mad2settings mad2debugmenu mad2achievements mad2achievementtracker
         COMMENT "Deploying version.dll and mods/*.dll to ${dir}"
     )
 endfunction()

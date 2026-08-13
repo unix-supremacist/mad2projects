@@ -32,6 +32,32 @@ var wiiFieldSchemaJSON embed.FS
 //go:embed tfbscript_pc_field_schema.json
 var tfbScriptPcFieldSchemaJSON embed.FS
 
+// liveReflectionFieldSchemaJSON holds a COMPLETE field schema (own +
+// inherited, every field's real declaring class) for every one of the
+// 1392 classes the Alchemy engine's own reflection system (igArkCore)
+// registers at runtime — not decompiled/guessed per class like every
+// other source in this file, but read directly out of the running game
+// process by mad2metadumper.dll (F4 dumps mad2/logs/mad2metadump.txt,
+// converted to this JSON — see mad2iga/live_reflection_dump.tsv for the
+// raw dump and mad2metadumper/src/metadumper.cpp for exactly how each
+// offset was resolved and PC-verified). This supersedes the long-standing
+// "10-20% field coverage, no inheritance" limitation docs/SCRIPT_FORMAT.md
+// flagged for the TFBScriptInfo namespace specifically — and, since the
+// dump covers literally every registered class, extends real field
+// coverage to every OTHER namespace too (ActorInfo alone goes from ~15
+// hand-verified fields to 49). Field names here are the engine's own
+// literal names (e.g. "_LHS", "_internalFlags", underscore-prefixed) —
+// deliberately NOT reconciled with the older hand-extracted schemas'
+// non-underscored key spelling (e.g. tfbScriptPcSchema's "LHS"), so this
+// layer only ever *adds* keys, never silently shadows a specifically
+// hand-verified entry elsewhere in this file. kind is always ["unknown"]
+// (the dump captures name/offset/owning-class only, not each field's real
+// igXxxMetaField subtype) — extending mad2metadumper.cpp to also resolve
+// kind via each field's own vtable is a natural, scoped follow-up.
+//
+//go:embed live_reflection_schema.json
+var liveReflectionFieldSchemaJSON embed.FS
+
 // FieldInfo describes one field of a class. Offset is either a single int
 // (the common case) or a []interface{} of ints when multiple accessors
 // disagreed (e.g. overloads) — treat those as lower-confidence, except see
@@ -64,6 +90,10 @@ var wiiSchemaByBareName map[string]map[string]FieldInfo
 // which needs the namespace-stripping step.
 var tfbScriptPcSchema map[string]map[string]FieldInfo
 
+// liveReflectionSchema maps a bare class name directly to its complete
+// live-dumped field set — see liveReflectionFieldSchemaJSON above.
+var liveReflectionSchema map[string]map[string]FieldInfo
+
 func init() {
 	data, err := wiiFieldSchemaJSON.ReadFile("wii_field_schema.json")
 	if err != nil {
@@ -89,6 +119,14 @@ func init() {
 	}
 	if err := json.Unmarshal(tfbData, &tfbScriptPcSchema); err != nil {
 		panic("mad2iga: embedded tfbscript_pc_field_schema.json invalid: " + err.Error())
+	}
+
+	liveData, err := liveReflectionFieldSchemaJSON.ReadFile("live_reflection_schema.json")
+	if err != nil {
+		panic("mad2iga: embedded live_reflection_schema.json missing: " + err.Error())
+	}
+	if err := json.Unmarshal(liveData, &liveReflectionSchema); err != nil {
+		panic("mad2iga: embedded live_reflection_schema.json invalid: " + err.Error())
 	}
 }
 
@@ -191,19 +229,29 @@ var pcDisprovenFields = map[string][]string{
 // it, and its "Major caveat" section for why Wii-only entries need this
 // treatment at all.
 func ClassSchema(bareName string) (map[string]FieldInfo, bool) {
+	liveFields, hasLive := liveReflectionSchema[bareName]
 	wiiFields, hasWii := wiiSchemaByBareName[bareName]
 	pcFields, hasPC := pcVerifiedFields[bareName]
 	tfbFields, hasTfb := tfbScriptPcSchema[bareName]
-	if !hasWii && !hasPC && !hasTfb {
+	if !hasWii && !hasPC && !hasTfb && !hasLive {
 		return nil, false
 	}
 
-	merged := make(map[string]FieldInfo, len(wiiFields)+len(pcFields)+len(tfbFields))
+	merged := make(map[string]FieldInfo, len(liveFields)+len(wiiFields)+len(pcFields)+len(tfbFields))
+	// live goes first: it uses the engine's own underscore-prefixed field
+	// names (e.g. "_LHS"), which never collide with the older hand-
+	// extracted schemas' non-underscored spelling (e.g. "LHS") below, so
+	// this layer only ever adds coverage, never shadows a specifically
+	// hand-verified entry.
+	for name, info := range liveFields {
+		merged[name] = info
+	}
 	for name, info := range wiiFields {
 		merged[name] = info
 	}
 	for _, name := range pcDisprovenFields[bareName] {
 		delete(merged, name)
+		delete(merged, "_"+name) // live schema's own spelling of the same field
 	}
 	for name, info := range tfbFields {
 		merged[name] = info

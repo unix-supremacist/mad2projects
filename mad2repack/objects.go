@@ -114,6 +114,16 @@ func cmdObjectsDump(bldPath, jsonPath string) error {
 					continue
 				}
 				entry.Fields[fieldName] = v
+				// Resolve name fields to real strings via the authoritative
+				// RSTR/TSTR fixup tables (see ObjectGraph.ResolveFieldName and
+				// docs/SCRIPT_FORMAT.md "Name-pool resolution"). RSTR-gated, so
+				// it only fires for genuine name indices — e.g. ActorInfo._name
+				// -> "Rave_CS_Controller" — and stays silent for anything else.
+				if nameOrdinalFields[fieldName] {
+					if s, ok := graph.ResolveFieldName(obj, fieldName); ok {
+						entry.Fields[fieldName+"__name"] = s
+					}
+				}
 			}
 		}
 		dump.Objects = append(dump.Objects, entry)

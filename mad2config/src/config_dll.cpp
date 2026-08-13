@@ -16,10 +16,12 @@
 #include <cstdlib>
 #include <cstring>
 #include <fstream>
+#include <map>
 #include <sstream>
 #include <string>
 #include <vector>
 
+#include "../include/mad2config_api.h"
 #include "../../mad2sharedlog/mad2sharedlog.h"
 
 // ---------------------------------------------------------------------
@@ -356,9 +358,22 @@ extern "C" __declspec(dllexport) BOOL WINAPI Mad2Config_GetBool(const char* sect
     return defaultValue;
 }
 
+// Records that (section, key) is a vkey/gamepadmask-typed value -- see
+// mad2config_api.h's own comment on Mad2ConfigEntry::typeHint for why.
+// Guarded by g_FileLock too (cheap map insert, no I/O) rather than a
+// second lock.
+static std::map<std::string, std::string> g_TypeHints;
+
+static void RecordTypeHint(const char* section, const char* key, const char* hint) {
+    EnterCriticalSection(&g_FileLock);
+    g_TypeHints[std::string(section) + "\x01" + key] = hint;
+    LeaveCriticalSection(&g_FileLock);
+}
+
 extern "C" __declspec(dllexport) int WINAPI Mad2Config_GetVirtualKey(const char* section, const char* key,
                                                                        int defaultVk, const char* comment) {
     if (!section || !key) return defaultVk;
+    RecordTypeHint(section, key, MAD2CONFIG_TYPEHINT_VKEY);
     std::string value = GetOrSeedString(section, key, VirtualKeyToName(defaultVk), comment);
     return ParseVirtualKey(value, defaultVk);
 }
@@ -367,8 +382,91 @@ extern "C" __declspec(dllexport) WORD WINAPI Mad2Config_GetGamepadButtonMask(con
                                                                                const char* defaultCombo,
                                                                                const char* comment) {
     if (!section || !key) return defaultCombo ? ParseGamepadButtonMask(defaultCombo) : 0;
+    RecordTypeHint(section, key, MAD2CONFIG_TYPEHINT_GAMEPADMASK);
     std::string value = GetOrSeedString(section, key, defaultCombo ? defaultCombo : "", comment);
     return ParseGamepadButtonMask(value);
+}
+
+// ---------------------------------------------------------------------
+// Flat entry enumeration -- see mad2config_api.h's own comment on
+// Mad2ConfigEntry for why (mad2debugmenu.dll's generic "Raw Config" tab).
+// Independent of GetOrSeedString's single-key FindKey/FindSectionInsertPoint
+// helpers above -- this walks every line once, collecting every key
+// regardless of section, rather than searching for one.
+// ---------------------------------------------------------------------
+
+struct ParsedEntry {
+    std::string section, key, value, comment, typeHint;
+};
+
+static std::vector<ParsedEntry> g_CachedEntries;
+
+static std::vector<ParsedEntry> ParseAllEntries() {
+    std::vector<ParsedEntry> entries;
+    std::vector<std::string> lines = ReadLines();
+    std::string currentSection;
+    std::vector<std::string> commentBuf;
+
+    for (const auto& rawLine : lines) {
+        std::string trimmed = Trim(rawLine);
+        if (trimmed.empty()) {
+            commentBuf.clear();
+            continue;
+        }
+        if (trimmed.front() == '#') {
+            commentBuf.push_back(Trim(trimmed.substr(1)));
+            continue;
+        }
+        if (trimmed.size() >= 2 && trimmed.front() == '[' && trimmed.back() == ']') {
+            currentSection = trimmed.substr(1, trimmed.size() - 2);
+            commentBuf.clear();
+            continue;
+        }
+        size_t eq = trimmed.find('=');
+        if (eq != std::string::npos && !currentSection.empty()) {
+            ParsedEntry e;
+            e.section = currentSection;
+            e.key = Trim(trimmed.substr(0, eq));
+            e.value = Trim(trimmed.substr(eq + 1));
+            for (size_t i = 0; i < commentBuf.size(); ++i) {
+                if (i) e.comment += "\n";
+                e.comment += commentBuf[i];
+            }
+            // Caller (Mad2Config_GetEntryCount) already holds g_FileLock --
+            // CRITICAL_SECTION is recursive on the same thread, but a
+            // direct lookup avoids the extra lock/unlock pair regardless.
+            auto hintIt = g_TypeHints.find(e.section + "\x01" + e.key);
+            if (hintIt != g_TypeHints.end()) e.typeHint = hintIt->second;
+            entries.push_back(std::move(e));
+        }
+        commentBuf.clear();
+    }
+    return entries;
+}
+
+extern "C" __declspec(dllexport) int WINAPI Mad2Config_GetEntryCount(void) {
+    EnterCriticalSection(&g_FileLock);
+    g_CachedEntries = ParseAllEntries();
+    int count = static_cast<int>(g_CachedEntries.size());
+    LeaveCriticalSection(&g_FileLock);
+    return count;
+}
+
+extern "C" __declspec(dllexport) BOOL WINAPI Mad2Config_GetEntryInfo(int index, Mad2ConfigEntry* outEntry) {
+    if (!outEntry) return FALSE;
+    EnterCriticalSection(&g_FileLock);
+    if (index < 0 || index >= static_cast<int>(g_CachedEntries.size())) {
+        LeaveCriticalSection(&g_FileLock);
+        return FALSE;
+    }
+    const ParsedEntry& e = g_CachedEntries[index];
+    snprintf(outEntry->section, sizeof(outEntry->section), "%s", e.section.c_str());
+    snprintf(outEntry->key, sizeof(outEntry->key), "%s", e.key.c_str());
+    snprintf(outEntry->value, sizeof(outEntry->value), "%s", e.value.c_str());
+    snprintf(outEntry->comment, sizeof(outEntry->comment), "%s", e.comment.c_str());
+    snprintf(outEntry->typeHint, sizeof(outEntry->typeHint), "%s", e.typeHint.c_str());
+    LeaveCriticalSection(&g_FileLock);
+    return TRUE;
 }
 
 BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID) {

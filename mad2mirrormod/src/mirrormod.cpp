@@ -1,9 +1,13 @@
 // mad2mirrormod: "Mirror Mode" -- horizontally flips the rendered frame and
 // inverts the left/right analog stick X axis to match. Unlike
 // mad2graphicseffectmod's effects, this is a persistent, full-session
-// toggle driven by config.cfg's [Mirror] section (or a live ToggleKey),
-// not a randomized mad2effects chaos effect -- there's nothing to register
-// with mad2effects here.
+// toggle driven by config.cfg's [Mirror] section (live-reloaded every ~1s
+// so the in-game debug menu's Config tab checkbox actually takes effect --
+// see ReloadConfigLive), not a randomized mad2effects chaos effect --
+// there's nothing to register with mad2effects here. Used to also have its
+// own dedicated ToggleKey hotkey; removed as redundant (and a source of
+// live-reload/controller-input glitches) once the debug menu's UI checkbox
+// covered the same toggle.
 //
 // Input half uses mad2xinput's existing invertLX/invertRX override fields
 // -- no new XInput hooking needed, this mod is purely a consumer of both
@@ -117,7 +121,6 @@ void Log(const char* fmt, ...) {
 
 struct Config {
     bool enabledAtStart = false;
-    int toggleVk = 0;
     DWORD userIndex = 0;
     bool forceBackbufferMirror = false;
 };
@@ -549,13 +552,9 @@ void LoadConfig() {
                     "HUD unflipped) and only falls back to mirroring the whole screen (HUD included) if that\n"
                     "doesn't work for this game's rendering -- see ForceBackbufferMirror below to force the\n"
                     "fallback deliberately. Every other mad2 overlay mod's HUD (timer, effects list, coords,\n"
-                    "twitch chat, now-playing) stays legible either way. Can also be toggled live with\n"
-                    "ToggleKey below.") != FALSE;
-    g_Config.toggleVk = api.GetVirtualKey(
-        "Mirror", "ToggleKey", 0,
-        "Keyboard key that toggles Mirror Mode on/off live. 0 = disabled (config-only).\n"
-        "Virtual-key code name with the VK_ prefix stripped (e.g. F9), or a 0xNN hex code.\n"
-        "See https://learn.microsoft.com/windows/win32/inputdev/virtual-key-codes");
+                    "twitch chat, now-playing) stays legible either way. Toggle live via the in-game debug\n"
+                    "menu's Config tab (or by hand-editing this value -- picked up within ~1s either way).") !=
+        FALSE;
     g_Config.userIndex = static_cast<DWORD>(
         api.GetInt("Mirror", "UserIndex", 0,
                    "Which XInput controller slot (0-3) gets its left/right stick X axis inverted to\n"
@@ -568,6 +567,27 @@ void LoadConfig() {
                      "game's rendering doesn't cooperate with the smarter technique.") != FALSE;
 }
 
+// Mirror Mode's settings are edited via the debug menu's generic "Raw
+// Config" tab now (mad2settings.dll registration removed -- it was
+// redundant once Raw Config could show/edit every config.cfg key, vkeys
+// included). Raw Config only ever writes straight to config.cfg though --
+// it has no way to reach into this mod's own live g_Config -- so this mod
+// has to notice those edits itself. ReloadConfigLive re-reads Enabled/
+// ForceBackbufferMirror/ToggleKey every ~1s (see the polling loop below)
+// and, if Enabled actually changed, drives SetMirrorActive itself (a plain
+// pointer write wouldn't engage/disengage ApplyStickMirror/
+// ClearStickMirror -- SetMirrorActive's side effects are what actually
+// matter here).
+void ReloadConfigLive() {
+    const auto& api = Mad2Config_Resolve();
+    if (!api.GetBool) return;
+    bool wantEnabled = api.GetBool("Mirror", "Enabled", g_Config.enabledAtStart ? TRUE : FALSE, "") != FALSE;
+    g_Config.forceBackbufferMirror =
+        api.GetBool("Mirror", "ForceBackbufferMirror", g_Config.forceBackbufferMirror ? TRUE : FALSE, "") != FALSE;
+    g_Config.enabledAtStart = wantEnabled;
+    if (wantEnabled != g_MirrorActive.load()) SetMirrorActive(wantEnabled);
+}
+
 DWORD WINAPI InitThreadFunc(LPVOID) {
     for (int i = 0; i < 100; ++i) {
         if (Mad2Config_Resolve().GetBool && Mad2XInput_Resolve().AddOverride) break;
@@ -576,14 +596,11 @@ DWORD WINAPI InitThreadFunc(LPVOID) {
     LoadConfig();
     SetMirrorActive(g_Config.enabledAtStart);
 
-    bool keyWasDown = false;
+    int reloadCounter = 0;
     for (;;) {
-        if (g_Config.toggleVk != 0) {
-            bool keyDown = (GetAsyncKeyState(g_Config.toggleVk) & 0x8000) != 0;
-            if (keyDown && !keyWasDown) {
-                SetMirrorActive(!g_MirrorActive.load());
-            }
-            keyWasDown = keyDown;
+        if (++reloadCounter >= 20) {  // ~1s at the 50ms sleep below
+            reloadCounter = 0;
+            ReloadConfigLive();
         }
         Sleep(50);
     }

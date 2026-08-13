@@ -145,6 +145,42 @@ extern "C" __declspec(dllexport) void WINAPI Mad2HookUtil_PatchVTableSlot(void* 
     VirtualProtect(&vtable[index], sizeof(void*), oldProtect, &unused);
 }
 
+extern "C" __declspec(dllexport) BOOL WINAPI Mad2HookUtil_InstallInlineHook(void* targetAddr, void* hookFunc,
+                                                                              int stolenBytes, void** outTrampoline) {
+    if (!targetAddr || !hookFunc || !outTrampoline || stolenBytes < 5) return FALSE;
+
+    BYTE* target = reinterpret_cast<BYTE*>(targetAddr);
+
+    // Trampoline layout: [stolenBytes original bytes][E9 rel32 back to target+stolenBytes].
+    BYTE* trampoline = reinterpret_cast<BYTE*>(
+        VirtualAlloc(nullptr, static_cast<SIZE_T>(stolenBytes) + 5, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE));
+    if (!trampoline) return FALSE;
+
+    memcpy(trampoline, target, static_cast<size_t>(stolenBytes));
+    trampoline[stolenBytes] = 0xE9;
+    ptrdiff_t backRel = (target + stolenBytes) - (trampoline + stolenBytes + 5);
+    memcpy(trampoline + stolenBytes + 1, &backRel, sizeof(INT32));
+
+    DWORD oldProtect;
+    if (!VirtualProtect(target, static_cast<SIZE_T>(stolenBytes), PAGE_EXECUTE_READWRITE, &oldProtect)) {
+        VirtualFree(trampoline, 0, MEM_RELEASE);
+        return FALSE;
+    }
+
+    target[0] = 0xE9;
+    ptrdiff_t fwdRel = reinterpret_cast<BYTE*>(hookFunc) - (target + 5);
+    memcpy(target + 1, &fwdRel, sizeof(INT32));
+    for (int i = 5; i < stolenBytes; ++i) target[i] = 0x90;  // NOP-pad any remaining stolen bytes.
+
+    DWORD unused;
+    VirtualProtect(target, static_cast<SIZE_T>(stolenBytes), oldProtect, &unused);
+    FlushInstructionCache(GetCurrentProcess(), target, static_cast<SIZE_T>(stolenBytes));
+
+    *outTrampoline = trampoline;
+    Log("Installed inline hook at %p (stole %d bytes, trampoline %p)\n", target, stolenBytes, trampoline);
+    return TRUE;
+}
+
 BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID) {
     switch (fdwReason) {
         case DLL_PROCESS_ATTACH:

@@ -1,0 +1,21 @@
+{
+  "extraRoots": null,
+  "perInstall": {
+    "/home/unix/src/mad2modloader/mad2": {
+      "winePrefix": "/home/unix/src/mad2modloader/wineprefixes/mad2",
+      "protonPath": "/home/unix/.steam/root/compatibilitytools.d/GE-Proton10-33",
+      "gameId": "0",
+      "inputRes": "1280x720",
+      "outputRes": "1280x720",
+      "scaling": "FSR",
+      "fsrSharpness": "2",
+      "fpsCap": "60",
+      "presentation": "1",
+      "startLevel": "title",
+      "musicDisabled": false,
+      "musicAudioDir": ""
+    }
+  },
+  "perInstallRandomizer": {},
+  "packagesDir": ""
+}

@@ -724,14 +724,239 @@ investigation was framed around:
    environment — see `CLAUDE.md`), so it remains the best-supported
    *hypothesis* for the exact mechanism, not a certainty.
 
+**Live re-test after all four fixes: still crashes, identically.** Built a
+fresh artifact with all four fixes applied (`ENGLISH.pak`, all 68 localized
+strings grown, repacked into a scratch `VolcanoRave.bld`, deployed to
+`mad2/Content/Streams/mod/VolcanoRave.bld`), launched the real game directly
+(bypassing `mad2relauncher`'s crash-relaunch so the log wouldn't get
+clobbered), and had the user load into VolcanoRave. The log confirms the
+redirect fires correctly (`[mad2assetloader] Redirect (NtCreateFile):
+...VOLCANORAVE.BLD -> ...mod\VOLCANORAVE.BLD`) and the process is gone
+immediately after with no further log lines from any mod — the exact same
+instant-death signature as every previous round. This rules out bugs 1-4
+(all real, all still correctly in place) as sufficient, and motivated the
+chunk-table investigation below.
+
+### A newly-found, much larger candidate: Section 0's own chunk table
+
+Decompiled `igIGZLoader::fixupChunk`/`fixupChunks`/`readSections`/
+`parseSections` directly in `igCore.dll` via Ghidra (not previously done —
+prior sessions worked from `validateFixedHeader`/`resolvePointer`-adjacent
+functions only). This surfaced a structure neither `pak.go` nor any of the
+four fixes above has ever read: **Section 0 has its own small header +
+chunk table**, separate from the class directory / string pool already
+documented above:
+
+```
+Section0+0x00  uint32  magic (0x49475A01)
+Section0+0x04  uint32  version (4)
+Section0+0x08  uint32  (unidentified, non-zero)
+Section0+0x0C  uint32  dirTableOff (already known — class directory)
+Section0+0x10  uint32  chunkCount
+Section0+0x14  uint32  chunkTableOff (relative to Section0's own start)
+...
+Section0+0x28  uint32  (unidentified, "5" in this sample)
+Section0+0x2C  uint32  strPoolOff (already known)
+```
+
+At `Section0 + chunkTableOff`, `chunkCount` consecutive chunk headers, each
+`{type u32, f4 u32, f8 u32, count u32, stride u32}` (20 bytes), followed by
+`stride - 20` bytes of the chunk's own payload; `stride` (not `count`) is
+what advances to the next chunk, and the last chunk's end lands exactly on
+Section 1's own start — confirmed byte-exact against a real `ENGLISH.pak`
+(9 chunks: types 0, 13, 1, 5, 4, 6, 8, 9, 14; the type-1 "string" chunk
+turned out to be 182 `C:/TFB/Content/Levels/.../*.wav` dev-path strings —
+**unrelated** to the localized-string pool `CompilePak` edits, confirmed by
+directly reading its bytes, not assumed).
+
+This chunk table is what the real engine's `igIGZLoader::fixupChunk` walks
+at load time (called from `parseSections`, called from `update()`'s state
+machine after `readSections`) to do reference-resolution passes over the
+loaded file — a totally different, and apparently much larger, mechanism
+than the individual class-field pointers bugs 1-4 patch one at a time.
+Chunk types 4, 5, and 6 in this same sample have counts of 188, 94, and 199
+respectively — **481 reference-fixup entries in this one file alone**, none
+of which any fix so far has touched, read, or even known existed.
+
+Decompiling `fixupChunk`'s case 4 (and the shared helper it calls,
+`FUN_10042800` at `igCore.dll:0x42800`) shows each entry resolves a
+*segmented pointer* (same `segID:offset` scheme `ResolveSegPointer` already
+uses, confirmed via `validateFixedHeader`'s version-gated mask/shift setup —
+version 4 files use the 24-bit-offset/8-bit-segID split) to a real patch
+address, then overwrites whatever small index is stored there with a
+resolved reference. Critically, for IGZ version 4 specifically, the
+*sequence* of patch-target indices is not a flat array of literal offsets —
+it's decoded via a nibble-packed variable-length delta scheme
+(`FUN_10042800`'s `param_4 >= 4` branch), which is why `bug 2`'s whole-file
+literal-pointer byte scan structurally could never have found these: they
+don't look like plain pointer values in the raw bytes at all.
+
+**Update: confirmed live, this is the actual crash.** Attached a real
+debugger (`wine winedbg --gdb`, launched as the direct parent of `Mad2.exe`
+so Linux's `ptrace_scope=1` restriction doesn't block the attach — external
+attach to an already-running process, e.g. via bare PID, was tried first
+and failed with `error 87`/YAMA denial; launching as the debugger's own
+child process avoids that entirely) against the live game, inside the same
+gamescope window the user plays in. Set a conditional breakpoint at
+`fixupChunk`'s entry and let the user play through to loading the edited
+`VolcanoRave.bld` for real. **The game segfaults inside `fixupChunk`
+itself**, confirmed by a real `SIGSEGV` caught in the debugger (not
+inferred): `igCore.dll+0x4dfd1` (`fixupChunk+0x511`), instruction
+`mov (%ecx,%edx,4),%edx`, disassembly immediately preceding it
+(`shl $0x16` / `and $0x37ffff` / `or $0x80000`) matching **case 5**'s tail
+exactly (the `(...) << 0x16 | (...) & 0x37ffff | 0x80000` line in the
+decompilation above) — so the crash is in case 5, not case 4 as the
+conditional breakpoint was originally set for (which is why it never
+tripped; the actual crash happened on a later, unconditional continuation).
+
+Concrete register/memory evidence at the crash, and what it means:
+
+- `this` (kept in `ESI` in this optimized build, not `ECX` — a register
+  allocation detail the decompilation abstracts away) `= 0x19d11a08`.
+  `this+0x14 = 4` (confirms the `FUN_10042800` version-branch parameter
+  really is the file version, resolving the earlier static-analysis
+  confusion about that handoff).
+- `this+0xc = 0x19d12800` — confirmed byte-for-byte to be the loaded
+  **Section 0** buffer (`0x49475A01 0x00000004 0x1C130001 0x0000001C
+  0x00000009 0x0000001C ...` — exactly Section 0's header/chunk-table
+  fields dumped from the real file earlier in this doc), and a direct
+  string check at `this_c+0x8C4` reads `"ls/Volca"` (mid-string from one of
+  chunk 1's `.../Levels/VolcanoRave/...` paths) — confirms the mapping
+  precisely.
+- The crashing resolution chain: `EAX` (the computed "patch location",
+  `piVar19` in the decompilation) `= 0x37fe2ca0`, entirely outside Section
+  0's buffer — i.e. **not** the class-index table case 5 is supposed to
+  patch into. Backed out via the section-base table
+  (`this+0x824`'s own `+0x14`, `local_14 = 0x19d12400`, whose only non-zero
+  entry is `local_14[0] = 0x37fe0e20`): `EAX - local_14[0] = 0x37fe2ca0 -
+  0x37fe0e20 = 0x1E80`. So this patch resolves as `segID=0` (i.e.
+  "relative to whatever section this pointer field's own section is" — the
+  same convention `IGZ_FORMAT.md`'s `ResolveSegPointer` already documents),
+  `offset=0x1E80`, into **Section 1** (confirmed: `local_14[0]` is a
+  different buffer than the already-identified Section 0 buffer, and
+  `0x1E80` is far too large to be a Section-0-relative offset into the tiny
+  9-chunk table anyway).
+- **`0x1E80` (7808 decimal) is past our edited pool's original end.** The
+  localized string pool bug 1-4 already work with sits at Section-1-relative
+  offset `0x2AC0 - 0x2900 = 0x1C0` through `0x328C - 0x2900 = 0x98C` (using
+  this doc's own earlier `StringPoolStart`/`StringPoolEnd`/`Sec1Off` numbers
+  for `ENGLISH.pak`). `0x1E80 > 0x98C` — this patch location's target lands
+  *after* the pool, exactly the class of offset bugs 1-4's `shift` logic
+  exists to correct for known fields, but **chunk 5's own patch-location
+  offset itself is never touched by `CompilePak` at all** — it's embedded
+  in Section 0's chunk-table payload (decoded via the nibble-delta scheme),
+  which `CompilePak` correctly never edits since none of *its own bytes*
+  change... except that those bytes *encode a target offset into Section 1*,
+  and growing the pool moves everything in Section 1 past it by `shift`
+  without that encoded offset ever being updated to match.
+- The value actually read at the (wrong) patch location, `0xCF00FFDE`, is
+  then used as an array index one instruction later
+  (`mov (%ecx,%edx,4),%edx` — reading `local_18[0xCF00FFDE]`, where
+  `local_18` comes from `this+0x810`'s class-metaobject table built by
+  chunk 0), producing a wild address and the actual `SIGSEGV`. The
+  underlying corruption (reading garbage instead of a small class index)
+  happens one instruction earlier, at the crash-reported IP; the true root
+  cause is one level further up the chain, in the stale patch-location
+  offset itself.
+
+**This confirms the theory, not just for chunk 5 but very likely chunk 4
+and chunk 6 identically** (all three share the same `segID:offset`
+resolution mechanism via `FUN_10042800` and `this+0x824`'s section-base
+table — see the decompilation above): **any chunk-table fixup entry (types
+4/5/6, 481 of them in `ENGLISH.pak` alone) whose embedded target offset
+falls at or past the string pool's original end needs `shift` added to it,
+exactly like bugs 2-4's known fields, but `CompilePak` has never done this
+for any of them.** The fix needs to: (1) parse Section 0's chunk table
+(now documented above), (2) for chunk types 4/5/6 (and check 7/0xb/0xc/0xf
+too, even though this file doesn't use them), decode each entry's embedded
+segmented-pointer patch-location, and (3) if the decoded `offset` component
+is `>= old StringPoolEnd` (Section-1-relative) and `segID` corresponds to
+Section 1, add `shift` to it and re-encode.
+
+### The nibble-delta chunk encoding, fully reverse-engineered and validated
+
+Static reading of `FUN_10042800` got the core shape right (4-bit nibbles,
+continuation bit `0x8`, 3-bit value accumulation, `return prev + 4 +
+delta*4`) but had the wrong payload start offset, which produced
+plausible-but-wrong values (close in magnitude, never exact). Fixed by
+brute-forcing the payload start position against the one concrete data
+point the live debugger session gave us (the crashing entry's real decoded
+offset, `0x1E80`, for chunk 5): **the chunk header is 24 bytes (0x18), not
+the 20 bytes (0x14) assumed earlier** — `{type, f4, f8, count, stride}` (the
+five fields already documented above) plus one more `uint32` at `+0x14`
+whose purpose isn't pinned down (possibly a nibble/bit-length hint; not
+needed to read or write the fixup values themselves, so not chased
+further). The nibble payload starts at `chunk + 0x18`, not `chunk + 0x14`.
+
+With that correction, decoding is not just plausible but **exactly right**:
+chunk 5's entries are `[0x4, 0x1A0, 0x98C, 0x9E4, 0xACC, ...]` —
+entry 2, `0x98C`, is byte-for-byte identical to this document's own
+independently-derived `StringPoolEnd` (Section-1-relative) for
+`ENGLISH.pak`. Not a coincidence: this is the loader's own string-dictionary
+bookkeeping, encoded via this chunk mechanism, landing exactly where it
+should. All three chunk types (4/5/6) decode cleanly with this correction,
+each consuming all but 2-4 trailing bytes of their declared payload
+(plausible end-of-stream padding).
+
+**Decode algorithm** (nibble stream starting at `chunk+0x18`, one byte at a
+time, low nibble first within each byte, byte pointer only advances after
+the *second* (high) nibble of a byte is consumed):
+
+```
+cum := 0
+for each of `count` entries:
+    val := 0
+    shift := 0
+    loop:
+        nibble := next 4 bits (low half of current byte, then high half,
+                                advancing the byte pointer after the high half)
+        val |= (nibble & 7) << shift
+        shift += 3
+        if nibble & 8 == 0: break   // no continuation bit -> done
+    cum = cum + 4 + val*4
+    // cum is a standard segmented pointer: segID = cum>>24, offset = cum&0xFFFFFF
+```
+
+**Encoding** (the inverse, needed to write shifted values back) is the
+reverse of this: for each entry, `delta := (cum - prevCum - 4) / 4` (must
+be an exact non-negative integer — `cum` values are always `prevCum + 4 +
+4*k`), then emit `delta`'s bits 3 at a time, low-to-high, setting the
+continuation bit (`8`) on every nibble except the last, packing two nibbles
+per byte (low half first, matching the decoder).
+
+**Fix scope, now fully understood (not yet implemented)**: unlike bugs 1-4,
+which only ever change *values* at fixed byte positions, correctly fixing
+this means the **re-encoded delta for a shifted entry can need a different
+number of nibbles than the original** (a `shift` of a few thousand bytes
+turns a small delta into a much larger one, needing more nibbles) — so a
+correct fix must fully re-encode the affected chunk's payload from scratch
+(recomputing every delta between consecutive corrected values, not
+patching bytes in place), which changes that chunk's byte length, which
+changes the chunk table's total length, which changes **Section 0's total
+size**, which shifts **Section 1's absolute file offset** — on top of, and
+compounding with, the shift already caused by the string pool growing
+inside Section 1. This is a strictly bigger structural change than
+anything `CompilePak` does today (bugs 1-4 only ever shift things *within*
+Section 1; this shifts Section 1 itself, and needs the section descriptor
+table's own offsets updated to match) — real, understood, tractable work,
+just not a quick patch. Concretely: `CompilePak` needs to (1) parse and
+fully re-encode chunks 4/5/6's payloads with corrected values, compute the
+resulting `ΔSection0Size`, (2) shift Section 1 (and any later sections)'
+descriptor offsets by `ΔSection0Size` in addition to the existing
+string-pool `shift`, and (3) apply `shift` to any chunk-4/5/6 entry whose
+Section-1-relative offset is `>= old StringPoolEnd`, using the encoder
+above.
+
 **What's still open (residual risk, be honest about this)**: `CompilePak`'s
 fixup pass, even after all four fixes, is still not a *complete*,
 schema-driven pointer-fixup implementation — it specifically handles string
 references, the top-level object array, `LanguagePackInfo.stringDict`, and
 `SoundDataInfo.visemeStream`, not a general "every `igObjectRefMetaField`/
-`igMemoryRefMetaField`/`igRawRefMetaField` field on every class" pass. Two
-concrete, unclosed gaps found and explicitly *not* chased further this
-session, for honesty:
+`igMemoryRefMetaField`/`igRawRefMetaField` field on every class" pass, and
+(per the chunk-table finding above) not the file's own chunk-based
+reference-fixup mechanism at all. Two smaller, previously-known concrete
+gaps, found and explicitly *not* chased further before the chunk-table
+discovery above, for honesty:
 
 - `SoundDataInfo.tfbSound` (`igObjectRefMetaField`, offset `0x28`) — checked
   directly against all 96 real instances in `ENGLISH.pak`: **every one is
@@ -777,3 +1002,473 @@ particularly mapping which `igIGZLoader` chunk-type case actually carries
 `igMemoryRefMetaField`/`igObjectRefMetaField` pointers in general, so the
 next candidate field can be found by reading the loader's own relocation
 table rather than checking classes one at a time.
+
+## RESOLVED: the pak-edit crash is fixed, confirmed live end-to-end
+
+**Bugs 5 and 6 together (both below) fully fix the long-standing crash.**
+Grew all 68 localized strings in a real `ENGLISH.pak` (the same
+`" >>> EDITED BY MAD2IGA <<<"` marker convention used throughout this
+investigation), repacked into `VolcanoRave.bld`, deployed to the test
+redirect slot, and had the user load into VolcanoRave for real (not under
+a debugger — bug 6's fix was tested both under `wine winedbg --gdb` and
+in an ordinary launch). **The level loads and plays completely normally**:
+no crash, no corruption, full 3D rendering, working UI, live overlay mods
+all functioning — and the edited marker text is visibly showing on the
+in-game pause menu's title banner and all three buttons ("Volcano Rave
+EDITED BY MAD2IGA", "EDITED BY MAD2IGA" on Help/Start/Quit), confirming
+the edit is genuinely applied, not just non-crashing.
+
+Both fixes were necessary; bug 5 alone (confirmed via live debugger) moved
+the crash further into the load sequence but didn't resolve it — bug 6,
+found by continuing the same live-debugger methodology into a second,
+independent chunk-table consumer, closed the gap. See each bug's own
+section below for the full technical writeup, including the concrete
+evidence trail (a live-captured `SIGSEGV`, register/memory state at the
+crash, and the exact chunk-table bytes before and after each fix).
+
+## Bug 5 — Section 0's chunk table (fixed, and it worked: the crash moved)
+
+Implemented in `mad2iga/chunktable.go`, wired into `CompilePak` in
+`pak.go`. Full technical writeup of the discovery, the nibble-delta
+encoding (fully reverse-engineered and validated — a decoded chunk-5 entry
+matches this file's own independently-derived `StringPoolEnd` exactly),
+and the fix's design (an isolated final splice on `outBytes`, applied
+after every other fix, to sidestep a real coordinate-system conflict
+between "positions within `headerBytes`" and "stored pointer values,
+which stay in original-file coordinates" — see the code's own extensive
+comments in `pak.go` and `chunktable.go`) is above, in the "A newly-found,
+much larger candidate" section. Unit tests in
+`mad2iga/chunktable_test.go` confirm the decode/encode round-trip,
+including under a synthetic shift matching this session's real test edit.
+
+**Confirmed live, with a debugger, that this fix is real and effective**:
+built a fresh artifact with all five fixes (68/68 strings grown), launched
+the actual game under `wine winedbg --gdb` (attached as the debugger's own
+direct child process — external `ptrace` attach to an already-running PID
+was tried first and blocked by `ptrace_scope=1`; launching as the
+debugger's child sidesteps that restriction entirely), and had the user
+play through to loading the edited `VolcanoRave.bld` for real, twice.
+
+**The result: the crash moved.** Before bug 5, the game reliably crashed
+inside `igIGZLoader::fixupChunk` itself (case 5's stale patch-location
+offset — see the writeup above). After bug 5, that specific crash no
+longer happens — the game progresses further into the load sequence
+before hitting a **different** crash, confirmed via a second live
+debugger session: a `SIGSEGV` calling through address `0x00000000`
+(a null function pointer) inside `igObject::isOfType`
+(`igCore.dll+0x56770`), called from `igObject::resetField`-adjacent
+object-graph-traversal code. `isOfType` dereferences its own `this`'s
+vtable pointer (`(**(code**)(*(int*)this + 0x48))()`) to walk a
+metaobject-inheritance chain; at the crash, `this = 0x3803eec8`, and
+reading `*(int*)this` yields `0x10CD0` — much too low a value to be a real
+vtable pointer in any loaded module, meaning either `this` itself is a
+wild/garbage object pointer, or it points at memory that was never
+properly initialized as an `igObject` in the first place.
+
+**Why this is good news, not a new dead end**: this crash is structurally
+*different* in kind from the fixupChunk crash bugs 1-5 all addressed —
+those were all "a stored offset points at stale data after the pool
+moved." This one is "some object reachable during graph traversal has a
+garbage `this` pointer," i.e. a distinct stale-*reference* bug (an object
+handle, object-array entry, or similar not yet covered by any existing
+fix) rather than a stale-*offset* one. It was **unreachable** before bug 5
+— the game never got far enough into loading to hit it. This is
+consistent with (and a live, concrete confirmation of) the "residual risk"
+section's own repeated warning that the object graph "almost certainly
+contains many more object-to-object pointers" than bugs 1-5 have found —
+this is a real instance of exactly that, now actually observed rather
+than speculated about.
+
+**Confirmed reproducible, and the real caller identified.** Re-ran the
+same test twice more, once with a conditional breakpoint on `isOfType`
+(which turned out to add so much per-call overhead during `GLOBAL.BLD`'s
+own object-graph deserialization — `isOfType` fires constantly during
+completely ordinary loading, long before `VolcanoRave.bld` — that it made
+the game appear to hang for 6+ minutes; not an actual hang, just breakpoint
+evaluation overhead on a hot path, resolved by removing the condition and
+just catching the natural `SIGSEGV`) and once completely bare. **The crash
+is 100% deterministic**: `this=0x3803eec8`, `*(int*)this=0x10CD0` (the bad
+"vtable pointer"), `EDI=0x19D148C2` — identical values across separate
+process launches. This isn't memory-layout-dependent corruption; it's a
+specific, reproducible bug tied to specific file content.
+
+Walked the stack manually (the automatic `bt` stack walk breaks down after
+frame 1 — `isOfType` and its caller don't follow the standard
+push-ebp/mov-ebp,esp prologue `bt` assumes, so the frame-pointer chain it
+tries to follow is stale/unrelated data, not a real bug in the crash
+itself) by scanning the raw stack dump for plausible in-module return
+addresses. Found `igIGZLoader::update` (`igCore.dll+0x51187`) and
+`igIGZLoader::load` (`igCore.dll+0x51362`) on the stack — expected, this
+is the same loader state machine bugs 1-5 already work with — and,
+critically, `igIGZLoader::postReadChunks` (`igCore.dll+0x49278`, just past
+that function's own entry at `0x49250`).
+
+**This is a second, independent consumer of the chunk table**, not
+previously examined. `parseSections` calls `fixupChunks` (bugs 1-5's own
+target) *then* `postReadChunks` — a second full pass over the *same*
+Section-0 chunk table. Decompiled `postReadChunks`/`postReadChunk`
+(singular, `igCore.dll+0x48f10`): it walks the identical chunk list
+(`this+0xc`'s chunk-count/offset — the exact structure
+`chunktable.go`'s `readChunkTable` already parses) and, for chunk **type
+5 specifically**, does something `fixupChunk`'s own case 5 never did:
+
+```c
+// (this + 0x824)'s own +0x14 -- the SAME section-base table used
+// everywhere else for segID:offset resolution.
+iVar1 = *(int *)(*(int *)(this + 0x824) + 0x14);
+local_c = *(void **)(ArkCore() + 0xd8);  // igArkCore's class-registration table
+do {
+    uVar5 = FUN_10042800(...);  // decode next value -- SAME nibble stream bugs 1-5 already fix
+    piVar9 = (int *)(iVar1[segID] + offset - (int)local_c * 4);
+    (**(code **)(*piVar9 + 4))(0);
+    (**(code **)(*piVar9 + 0x1c))(0);
+    (**(code **)(*piVar9 + 0x14))(1);
+    (**(code **)(*piVar9 + 0x30))();  // -- one of these four vtable calls chains into isOfType,
+    ...                                //    where the live crash actually happens
+} while (...)
+```
+
+This resolves the **exact same decoded segmented-pointer values** my
+existing chunk-5 fix already shifts correctly (confirmed: the same
+`FUN_10042800`/`iVar1[segID]+offset` resolution as `fixupChunk`'s own case
+5, and as `chunktable.go`'s `decodeChunkPatchValues`) — but then
+additionally subtracts `local_c*4` (a pointer into `igArkCore`'s
+class-registration table) before treating the result as an **object
+pointer** and calling four vtable slots on it. Two live possibilities,
+not yet distinguished:
+
+1. My existing chunk-5 fix (shift the offset by `shift` when it's `>=` the
+   old pool end) is *correct* for what `fixupChunk`'s own case 5 needs,
+   but `postReadChunk`'s case 5 needs the *same* corrected value — meaning
+   the fix should already cover this, and the remaining bug is somewhere
+   in *this* function's own `local_c`/`iVar1` handling instead (e.g. maybe
+   `local_c`, the ArkCore class-table pointer, is itself something that
+   needs to be current/correct and isn't related to the pool-shift at
+   all).
+2. Chunk type 5 is genuinely **dual-purpose** — its raw values mean
+   different things to `fixupChunk` (a Section-1-relative segmented
+   pointer, needing the pool shift) vs. `postReadChunk` (an index into
+   ArkCore's class table, needing no shift at all, or a *different*
+   correction) — in which case correctly fixing `fixupChunk`'s
+   consumption may have been *necessary* (it was — the original crash
+   genuinely moved) but isn't *sufficient*, and `postReadChunk`'s
+   resolution formula needs its own, separate analysis to determine what
+   (if anything) about it depends on the edit at all.
+
+**Next step**: set a breakpoint directly inside `postReadChunk`'s case-5
+loop (not at the `isOfType` crash site, which is too far downstream to see
+`piVar9`/`local_c`/`iVar1` directly) — e.g. at the four vtable-call
+instructions themselves — and dump `piVar9`, `local_c`, and `iVar1[segID]`
+for the specific iteration that produces the bad object, to determine
+which of the two possibilities above is correct. This needs its own
+dedicated live session; the `isOfType`-conditional-breakpoint approach
+that worked for finding *this* much is too slow for stepping through
+`postReadChunk` itself, since it's on a comparatively hot path during
+ordinary loading — use an unconditional breakpoint scoped tightly to just
+the four vtable-call instructions' addresses instead, or single-step from
+`postReadChunk`'s own entry once `VOLCANORAVE.BLD`'s specific load is
+confirmed in progress (watch `mad2/logs/mad2.log` for the
+`VOLCANORAVE.BLD` redirect line, *then* arm the breakpoint, to avoid
+tripping on `GLOBAL.BLD`'s own unrelated chunk-5 processing first).
+
+**Methodological check performed, worth recording**: before continuing
+down this path, tested whether `gdb`'s default behavior (stop on every
+`SIGSEGV`) was itself misleading — Wine/Windows SEH can silently recover
+from an access violation the *app's own* exception handler catches, which
+a debugger normally intercepts *before* that handler ever runs, potentially
+making a harmless, always-present, silently-recovered exception look like
+"the crash." Tested directly: `handle SIGSEGV nostop print pass` (forward
+the signal to the app instead of stopping) on a fresh launch found the
+early, unrelated-looking crash from one attempt above
+(`igCore.dll+0x8fe0`, landing mid-instruction, seen once while chasing
+`postReadChunk`) really is exactly that — a benign, silently-recovered
+exception during ordinary early-boot loading (confirmed: the game
+continued completely normally afterward, all the way through the title
+screen and menu, with that signal delivered-and-passed-through). **But a
+second signal, during/immediately after `VOLCANORAVE.BLD`'s load, was
+*not* recovered from and genuinely terminated the process** (`winedbg`
+reported exit via unhandled `STATUS_ACCESS_VIOLATION`), on the same
+thread ID pattern as every previous capture of the `isOfType`/
+`postReadChunk` crash. This confirms the crash this section has been
+chasing is the *real*, fatal, unhandled one — not a debugger artifact —
+and rules out the concern that gdb's stop-on-SIGSEGV default was
+generating false leads. Good to proceed with the `postReadChunk`
+breakpoint plan above with confidence.
+
+## Bug 6 — chunk types 9 and 14's raw (non-nibble-encoded) pointers were never shifted (FIXED, and this is what actually closed the crash)
+
+Rather than the planned `postReadChunk`-internal breakpoint (needing
+precise timing to avoid `GLOBAL.BLD`'s own unrelated chunk-5 traffic), a
+shortcut worked instead: `local_c` (`postReadChunk` case 5's ArkCore
+class-table term) comes from a **singleton**, `ArkCore_function()`
+(`igCore.dll+0x37c10`), which just `return`s a global variable —
+`igCore.dll`'s own static data at Ghidra address `0x101972b0`, i.e. file
+offset `0x1972b0`, runtime `igCore.dll_base + 0x1972b0`. Read directly
+from a live session at the moment of the actual crash (interrupting `gdb`
+with `SIGINT` right after a natural, uninstrumented `SIGSEGV` had already
+stopped it — no need to precisely time a breakpoint):
+`*(int*)(igCore.dll_base+0x1972B0)` → the ArkCore singleton pointer →
+`*(int*)(singleton+0xd8)` → **`0` (NULL)**.
+
+With `local_c == 0`, `postReadChunk`'s case-5 formula
+(`piVar9 = iVar1[segID] + offset - local_c*4`) degenerates to exactly
+`iVar1[segID] + offset` — **the same resolved address `fixupChunk`'s own
+case 5 already gets right** (bug 5's fix). So chunk type 5 was not
+actually dual-purpose after all (ruling out possibility 2 from the
+previous section) — but the crash persisted anyway, meaning the *real*
+problem was never chunk 5 at the crash site itself. This redirected the
+search to the other chunk types `postReadChunk` handles: types 8, 9, and
+14 (`0xe`), whose cases call `resolvePointer(this, sectionBaseTable,
+rawValue)` directly — no `FUN_10042800`/nibble-delta involved at all.
+Decompiling `resolvePointer` (`igCore.dll+0x428a0`) confirms it's exactly
+`sectionBaseTable[segID] + offset` — a **plain, literal, unencoded
+segmented-pointer dword** stored directly in the chunk's payload.
+
+Checked directly against real `ENGLISH.pak` bytes: chunk type 8's single
+raw value (`0x4`) doesn't need shifting, but **chunk type 9's
+(`0x5E0A8`) and chunk type 14's (`0x5E244`) both land past the old string
+pool's end** — needing exactly the same `+= shift` correction bugs 1-5
+apply elsewhere, and **never received it**, since `chunktable.go`'s
+`chunkTypesWithSegPointerPayloads` (the nibble-delta types bug 5 already
+handles) never included these. Chunk types 9/14 resolve to `igHandleList`/
+`igStringRefList` instances (`this+0x830`/`this+0x834` in `postReadChunk`,
+matching `fixupChunk`'s own case-7/0xe assignments to the same fields) —
+consistent with the crash's actual call chain (`igHandleList::dynamicCast`/
+`igStringRefList::dynamicCast`, both plausible callers of `isOfType`
+internally to validate the resolved object's type before casting).
+
+**Fix**: added `chunkTypesWithRawPointerPayloads` (`{8, 9, 0xe}`) to
+`mad2iga/chunktable.go`, handled separately from the nibble-encoded types
+in `fixChunkTableSection1Refs` — read/write `count` plain `uint32`
+segmented pointers directly (no delta decode/encode needed, and
+critically no resizing: unlike the nibble-encoded types, a shifted raw
+dword never changes byte length, so these chunks needed no `stride`
+update and no knock-on Section-0-resize handling).
+
+**Verified**:
+- Structural: re-parsed the compiled pak's object graph after the fix —
+  97/97 top-level objects still resolve correctly (same check bugs 1-5's
+  own verification used).
+- Direct byte check: chunk 9's offset went from `0x5E0A8` to `0x5EE78`
+  and chunk 14's from `0x5E244` to `0x5F014` — both shifted by exactly
+  `+0xDD0` (3536 decimal), matching this edit's real string-pool growth
+  precisely.
+- **Live, end-to-end, in the actual game**: see "RESOLVED" at the top of
+  this section — the level loads and plays completely normally, with the
+  edited marker text visibly rendering on the in-game pause menu.
+
+**Both bugs 5 and 6 were necessary; neither alone was sufficient.** Bug 5
+fixes the nibble-delta-encoded chunk types (4/5/6/7/0xb/0xc/0xf), which
+`fixupChunk` needs. Bug 6 fixes the plain-raw-dword chunk types (8/9/0xe),
+which only `postReadChunk` needs, in a completely separate pass over the
+same underlying chunk table. Both were invisible to bugs 1-4's original
+approach (reading known class fields one at a time) because neither is a
+class field at all — both live in Section 0's chunk table, a
+loader-internal mechanism with no counterpart in this codebase's
+originally-documented object-graph model.
+
+## In-process xdelta distribution (`mad2xdeltamod`/`mad2xdeltagen`) — same string-pool edit, applied live in memory instead of shipping a whole `.bld`
+
+Separate motivation from everything above: this repo can't redistribute
+whole `.bld`/`.arc` files (copyrighted game assets), and a `.pak` can't be
+shipped as a loose file either — the game never opens a bare `.pak` via
+`CreateFile`/`NtCreateFile`, only whole archives (see
+`mad2assetloader/src/file_redirect.cpp`). A `.bld` can't be xdelta-diffed
+directly either: each file entry inside it is independently zlib-chunk-
+compressed (see "Compressed file data" above), so a one-byte text edit
+reshuffles the entire compressed stream — there's no useful byte-level
+similarity between an original and edited `.bld` to diff against. The goal:
+ship a tiny binary diff against the game's own already-decompressed,
+in-memory bytes, and apply it there, at runtime — no full archive or `.pak`
+ever touches disk.
+
+### The hook point
+
+Found by reverse-engineering `igCore.dll` directly (Ghidra, live), starting
+from zlib's own embedded error strings (`igCore.dll` statically links zlib
+1.2.3 with no exported symbols) and working forward to the real call site:
+
+- `Gap::Core::igArchive::computeChunkProperties` (`igCore.dll:0x37af0`) uses
+  a literal `0x8000` — the same 32 KiB chunk size this doc's "Compressed
+  file data" section already documents from the static Go side.
+- The actual per-chunk decompressor, `igCore.dll:0x37ab0` (unnamed by
+  Ghidra), is a thin wrapper: reads the 2-byte big-endian size prefix, then
+  calls zlib's `uncompress()` (`igCore.dll:0x7d810`, confirmed via
+  `inflateInit2_`/`inflate`/`inflateEnd`'s own embedded error strings —
+  `"invalid stored block lengths"` etc. at `0x100a3d74` and neighbors).
+- Dispatched via an async job (`Gap::Core::igArchive::startNewTasks`,
+  `igCore.dll:0x408c0`) through `igJobManager` — decompression happens
+  off the render thread, per chunk.
+- `Gap::Core::igIGZLoader` (`igCore.dll`) is the `.pak`/`level.bld`-payload
+  loader, a state machine (`update()`/`advanceState()`) stepping through
+  `openFile` → `readFixedHeader` → `validateFixedHeader` → `readSections` →
+  **`parseSections`** → `fixupChunks`. `load(this, char* filename, ...)`
+  (`igCore.dll:0x512e0`) stores the filename directly at `this+8` (an
+  `igStringRef` — confirmed to be a bare `char*` at its own offset 0, see
+  `igStringRef::operator char const*`'s one-line body).
+- `readSections` (`igCore.dll:0x483d0`) mallocs one buffer per active IGZ
+  section and, for each, drives the *same* chunked-zlib pipeline above
+  (`igFileContext::createWorkItem`/`igArchive::addWork`, blocking) — so by
+  the time `parseSections` is called, every section's bytes are fully
+  decompressed and sitting in their own buffer.
+
+**`Gap::Core::igIGZLoader::parseSections` (`igCore.dll` RVA `0x51000`) is
+the hook point**: called once per loaded `.pak`/`level.bld` payload, after
+every section is fully decompressed but before anything is parsed, with the
+filename already resolvable off the instance. Its own prologue — `push esi;
+mov esi,[esp+8]` — is exactly 5 bytes and a clean instruction boundary, the
+minimum a 5-byte JMP detour needs.
+
+### New primitive: `Mad2HookUtil_InstallInlineHook`
+
+This repo's existing hooking infra (`mad2hookutil`, see CLAUDE.md's "The IAT
+hooking pattern") only did IAT patching and COM vtable-slot overwrites —
+neither applies to an arbitrary internal function found by address, not
+resolved by name or reached through a vtable. Added a third primitive: a
+standard 5-byte relative-JMP inline detour. Caller supplies `stolenBytes`
+(manually verified via disassembly, not auto-detected — no length-
+disassembler here); `InstallInlineHook` copies that many original bytes
+into a fresh `PAGE_EXECUTE_READWRITE` trampoline followed by a JMP back to
+`target+stolenBytes`, then overwrites the target's own first 5 bytes with a
+JMP to the caller's hook function (NOP-padding any remainder). The hook
+function itself must be raw asm (GCC `__attribute__((naked))`, verified
+against this exact toolchain's C symbol name-mangling — `i686-w64-mingw32`
+prefixes cdecl symbols with `_`, confirmed via a standalone
+compile+`objdump` smoke test before relying on it): entered via JMP (not
+CALL) with whatever register/stack state the real function's entry point
+expected, it must save/restore every clobbered register around its own
+`call` to a C callback so the following stolen bytes execute in exactly the
+state they originally would.
+
+### The patch format and pipeline
+
+`mad2xdeltamod/include/mad2xdelta_format.h` defines a small container
+(magic `MAD2XD2`, then N regions, each `{kind, origSize, origCrc32,
+patchSize}` + raw `xd3_encode_memory` output). `mad2xdeltagen` (native
+Linux CLI, own CMake project like `mad2music/`, links the xdelta3 source
+already vendored for `extern/jak-project`) takes original/modified region
+byte pairs and produces one of these files; `mad2xdeltamod` (the in-game
+mod, hooks `parseSections` as above) loads `*.mad2xdelta` files from
+`<exe dir>/xdelta_patches/`, matches one to whichever file is loading, and
+applies each region in memory. Two region kinds turned out to be necessary
+(see below): `section` (an IGZ section, found by exact size+CRC32 match)
+and `header` (a fixed buffer at a known offset, see "Section 0" below).
+
+Both original and modified region bytes come from the same
+`mad2repack pak-dump` → edit `pak.json` → `pak-compile` round trip already
+used for whole-file repacking (this doc's bugs 1-6) — `pak-compile` already
+computes every fixup a growing string-pool edit needs for the *whole
+file*; `mad2xdeltagen`'s inputs are just byte-slices of that same compiled
+output, sliced at the boundaries the running game actually uses (found
+live, see below — not assumed from the file format alone).
+
+### Live findings, most surprising first
+
+Rebuilt the documented VolcanoRave edit (all 68 `ENGLISH.pak` strings
+grown with the `" >>> EDITED BY MAD2IGA <<<"` marker, same as bugs 5/6's
+own test artifact) as an xdelta patch and iterated live, each round-trip
+via `mad2.log`:
+
+1. **The runtime filename is CRC-keyed, not name-keyed.** `igIGZLoader`'s
+   filename string is `"<archive path>/0x<CRC32, hex>"` — e.g.
+   `.../VOLCANORAVE.BLD/0x75F7FBB1` — never the human-readable member name.
+   Confirmed exactly: `0x75F7FBB1 == 1979186097`, `ENGLISH.pak`'s own CRC
+   in `VolcanoRave.bld`'s file table (`mad2repack unpack`'s
+   `metadata.json`). The archive format looks entries up by CRC (see
+   `iga.go`'s `Entries[i].CRC`) and apparently never carries the name this
+   far at runtime. Patch files are named `<ARCHIVE>.bld_0x<CRC32>.mad2xdelta`
+   accordingly.
+2. **A section's size field is packed, not a plain byte count.** Reading a
+   section's raw size gave `268821472` for a section that's really `386016`
+   bytes — caused a real, confirmed live crash (`mad2relauncher` auto-
+   relaunching right after) the first time this was read unconditionally
+   without masking. `268821472 & 0x07FFFFFF == 386016`, byte-exact. This is
+   `Gap::Core::igMemory`'s own packed layout (`igMemory::getSize()`'s whole
+   body is `return *(uint*)this & 0x7ffffff`) — the section buffer was
+   allocated via `igMemory::mallocAligned`, which stores `{packed
+   size|flags, pointer}`. The high 5 bits are flags (`getOwnsMemory`/
+   `getHasAlignment`) that must be preserved (not zeroed) when writing a
+   new size back.
+3. **Section 1 (the string pool's section) is exactly `[Sec1Off:EOF]`.**
+   For this `ENGLISH.pak` (396512 bytes total), the one active section has
+   masked size `386016` — exactly `396512 - 10496`, and its CRC32 matches
+   a diff of `bytes[10496:]` exactly. Same `Sec1Off=10496` this doc's Bug
+   5 writeup already established from the static/offline side.
+4. **Same-length edits work, live, end to end, right now.** A patch that
+   only swaps same-length text (`Help→HELP`, `Quit→QUIT`, `Start→START`,
+   `Volcano Rave→VOLCANO RAVE` — deliberately the same four strings bugs
+   5/6's own pause-menu test used) applied in place and **rendered
+   correctly on the real pause menu**, confirmed by the user live. This
+   validates the entire mechanism end to end: hook point, filename/CRC
+   matching, section identification, masked-size handling, in-place write.
+5. **Growing the section alone doesn't render, and doesn't crash either —
+   it's silently ignored.** The full 68-string grown patch applies cleanly
+   (new pool allocation, correct CRC match, no crash) but the pause menu
+   still shows the *original* text. Isolated by finding (4) above first —
+   proves the gap is specifically about growth, not the mechanism itself.
+6. **Growing needs "Section 0" patched too, and it's not at the offset
+   file-format reasoning alone would suggest.** A growing string pool
+   shifts every subsequent string's offset; those offsets live in a
+   separate fixed-format buffer — `igIGZLoader+0xc` (confirmed
+   version-independent: `*(void**)(this+0xc) = pvVar7` appears identically
+   in all 3 `readSections` file-version branches) — which is exactly
+   "Section 0" as this doc's Bug 5/6 sections already named it (and
+   confirmed again here: this buffer's live first 64 bytes are byte-
+   identical to a specific slice of the real file, see next point).
+   First guess (`bytes[0:10496]`, "everything before Section 1") read
+   *unrelated HLSL shader source text* ~450 bytes in — clearly reading
+   past a too-small real allocation into neighboring heap memory. The
+   actual size, read directly off the live instance
+   (`sizeIfGe2 = *(uint*)(this+0x24)` for this file's version 4 — the
+   same field `readSections`' non-`<2` branches use for this exact
+   allocation's `mallocAligned` call) is **8448 bytes**, and it starts at
+   **file offset 2048, not 0** — confirmed by an exact 64-byte hex match
+   between the live buffer and `bytes[2048:2048+64]` of the real file.
+   `2048 + 8448 = 10496`, i.e. Section 0's buffer is `bytes[2048:Sec1Off]`;
+   the file's first 2048 bytes are read separately (`readFixedHeader`'s
+   own preliminary `0x800`-byte probe) and, as far as could be determined,
+   never persisted anywhere `parseSections` can reach.
+7. **Even with both regions correctly identified and byte-verified
+   (matching CRC32, clean write, no crash at write time), the growing
+   patch still crashes** — shortly after `parseSections` returns, during
+   the object-graph walk. This is the same crash *shape* as Bug 5 above
+   (`this+0xc` = Section 0 buffer, patch target computed from its chunk
+   table lands outside it) but reproduced through live in-memory patching
+   rather than a whole-file swap, which this doc's Bug 5/6 fixes were
+   originally verified against. **Leading, unconfirmed hypothesis**: the
+   file's first 2048 bytes (`readFixedHeader`'s own probe, never patched
+   by either region above) differ between original and grown files at a
+   handful of scattered offsets (20-21, 32-33, 36-37 — small enough to be
+   count/size fields, not content) — if `validateFixedHeader`/an early
+   stage caches a value from there (e.g. a total chunk/object count) before
+   `parseSections` ever runs, and `fixupChunk`/`postReadChunk` cross-check
+   their resolved addresses against that cached value, patching Section
+   0's *content* correctly while leaving this earlier-cached count stale
+   would reproduce exactly this failure — content-correct, crash-anyway.
+   **Not yet confirmed** — a live `wine winedbg --gdb` session (same
+   technique bugs 5/6 used, see their own writeups above for the exact
+   `ptrace_scope`-avoidance reasoning) was started to catch the exact
+   `SIGSEGV`/`EIP`/register state, but paused before a crash was captured.
+   Resume by running the game under `wine winedbg --gdb Mad2.exe` (see
+   `mad2xdeltamod`'s own file header for the up-to-date hook offsets) with
+   the current growing patch deployed, play into `VolcanoRave`, and capture
+   `bt`/`info registers` at the resulting `SIGSEGV` — then cross-reference
+   against Bug 5's own crash-site addresses (`igCore.dll+0x4dfd1`
+   `fixupChunk+0x511`) to see if it's the literal same instruction or a new
+   one.
+
+### Status
+
+- **Same-length string edits**: fully working, verified live in the real
+  game (word swaps, capitalization, retranslation with matching length).
+  Ship today via `mad2xdeltamod` + a `section`-only patch.
+- **Growing edits** (the original motivating example — appending marker
+  text): mechanically applies both regions correctly (verified: exact
+  CRC32 match, clean decode, clean write, no crash at write time) but
+  crashes shortly after in the object-graph walk, and does not yet render
+  even on the runs that don't crash. Root cause not yet confirmed — see
+  the debugger session above, not yet resumed.
+- Every offset/RVA above is specific to this repo's current `igCore.dll`
+  build; if it's ever replaced, all of them need re-verifying the same way
+  they were found (Ghidra + live `mad2.log` cross-checks), not assumed
+  stable.
